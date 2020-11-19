@@ -12,8 +12,6 @@ fn start() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
     defer _ = gpa.deinit();
 
-    const parse = try UserAgent.parse("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36");
-
     var downstream = try zigly.downstream();
     var request = downstream.request;
 
