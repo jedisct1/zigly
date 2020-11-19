@@ -146,6 +146,54 @@ try query.body.close();
 
 And the resulting `response` contains `headers` and `body` properties, that can be inspected the same way as a downstream query.
 
+## Deployment on Fastly's platform
+
+The `fastly` command-line tool only supports Rust and AssemblyScript at the moment.
+However, it can still be used to upload code written in other languages, including Zig.
+
+1. Create a new project:
+
+```sh
+fastly compute init
+```
+
+Choose `rust` or `assemblyscript`, either will work.
+
+2. Remove everything except the `fastly.toml` file.
+
+3. Create a directory names `pkg/<your project nname>`. If the project is named `zigmodule`:
+
+```sh
+mkdir -p pkg/zigmodule
+```
+
+4. Copy (don't move) `fastly.toml` into this directory:
+
+```sh
+cp fastly.toml pkg/zigmodule/
+```
+
+5. Copy your WebAssembly module into a new `bin` directory inside the previous directory. The WebAssembly module must be named `main.wasm`.
+
+```sh
+mkdir -p pkg/zigmodule/bin
+cp /tmp/main.wasm pkg/zigmodule/bin/main.wasm
+```
+
+6. Archive the directory:
+
+```sh
+tar czv -C pkg -f pkg/zigmodule.tar.gz zigmodule
+```
+
+7. Deploy!
+
+```sh
+fastly compute deploy
+```
+
+And bump the version number in `fastly.toml` whenever you want to deploy a new version.
+
 ...
 
 ** Documentation in progress! **
