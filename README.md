@@ -16,14 +16,14 @@ The service runs anything that can be compiled to WebAssembly, and exports a con
 
 Zig:
 
-- Is very simple to learn
-- Compiles quickly, providing a great developer experience
-- Can compile and use existing C and C++ code at no cost
-- Is way safer than C and C++ by design
-- Prints nice and useful error traces, on all platfors, including WebAssembly.
-- Comes with a rich standard library, avoiding the need for many external dependencies
-- Has excellent support for WebAssembly
-- Creates small, fast, standalone executables and WebAssembly modules
+- is very simple to learn
+- compiles quickly, providing a great developer experience
+- can compile and use existing C and C++ code at no cost
+- is way safer than C and C++ by design
+- prints nice and useful error traces, on all platforms, including WebAssembly.
+- comes with a rich standard library, avoiding the need for many external dependencies
+- has excellent support for WebAssembly
+- creates small, fast, standalone executables and WebAssembly modules.
 
 ## What is Zigly?
 
