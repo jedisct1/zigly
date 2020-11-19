@@ -13,7 +13,6 @@ The service runs anything that can be compiled to WebAssembly, and exports a con
 
 [Zig](https://ziglang.org) defines itself as "a general-purpose programming language and toolchain for maintaining robust, optimal, and reusable software".
 
-
 Zig:
 
 - is very simple to learn
@@ -162,7 +161,7 @@ For the language, select `rust` or `assemblyscript`, either will work.
 
 2. Remove everything except the `fastly.toml` file.
 
-3. Create a directory named `pkg/<your project nname>`.
+3. Create a directory named `pkg/<your project name>`.
 
 ```sh
 mkdir -p pkg/zigmodule
