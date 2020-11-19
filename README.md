@@ -18,11 +18,11 @@ Zig:
 - is very simple to learn
 - compiles quickly, providing a great developer experience
 - can compile and use existing C and C++ code at no cost
-- is way safer than C and C++ by design
+- is way safer than C and C++ by design, while retaining excellent performance
 - prints nice and useful error traces, on all platforms, including WebAssembly
 - comes with a rich standard library, avoiding the need for many external dependencies
 - has excellent support for WebAssembly
-- creates small, fast, standalone executables and WebAssembly modules
+- creates highly optimized, standalone executables and WebAssembly modules
 - can now be used on Compute@Edge!
 
 ## What is Zigly?
