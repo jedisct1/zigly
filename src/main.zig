@@ -12,6 +12,8 @@ fn start() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
     defer _ = gpa.deinit();
 
+    try zigly.compatibilityCheck();
+
     var downstream = try zigly.downstream();
     var request = downstream.request;
 

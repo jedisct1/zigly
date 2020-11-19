@@ -34,7 +34,8 @@ fn fastly(fastly_status: wasm.fastly_status) FastlyError!void {
     }
 }
 
-pub fn init() !void {
+/// Check that the module is compatible with the current version of the API.
+pub fn compatibilityCheck() !void {
     try fastly(wasm.mod_fastly_abi.init(1));
 }
 
