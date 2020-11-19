@@ -72,6 +72,8 @@ The easiest way to test the resulting modules is currently to use [Fastlike](htt
 
 ### Using Zigly
 
+#### Hello world!
+
 ```zig
 var downstream = try zigly.downstream();
 var response = downstream.response;
@@ -85,3 +87,47 @@ That type includes `response`, that can be used to send a response, as well as `
 
 Every function call may fail with an error from the `FastlyError` set.
 
+#### Inspecting incoming requests
+
+Applications can read the body of an incoming requests as well as other informations such as the headers:
+
+```zig
+const request = downstream.request;
+const user_agent = try request.headers.get(&allocator, "user-agent");
+if (request.is_post()) {
+    // method is POST, read the body until the end
+    const body = try request.body.readAll(&allocator);   
+}
+```
+
+As usual in Zig, memory allocations are never hidden, and applications can choose the allocator they want to use for individual function calls.
+
+#### Making HTTP queries
+
+Making HTTP queries is easy:
+
+```zig
+var query = try Request.new("GET", "https://example.com");
+var response = try query.send("backend");
+const body = try response.body.readAll(&allocator);
+```
+
+Arbitrary headers can be added onto the outgoing `query`:
+
+```zig
+try query.headers.set("X-Custom-Header", "Custom value");
+```
+
+Body content can also be pushed, even as chunks:
+
+```zig
+try query.body.write("X");
+try query.body.write("Y");
+try query.body.close();
+```
+
+And the resulting `response` contains `headers` and `body` properties, that can be inspected the same way as a downstream query.
+
+...
+
+** Documentation in progress! **
