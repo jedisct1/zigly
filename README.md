@@ -192,7 +192,7 @@ tar czv -C pkg -f pkg/zigmodule.tar.gz zigmodule
 fastly compute deploy
 ```
 
-And bump the version number in `fastly.toml` whenever you want to deploy a new version.
+In order to deploy new versions, bump the version number in `fastly.toml` and just type `fastly compute deploy` again.
 
 ...
 
