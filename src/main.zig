@@ -56,7 +56,7 @@ fn start() !void {
         var arena = ArenaAllocator.init(&gpa.allocator);
         defer arena.deinit();
         var query = try Request.new("GET", "http://google.com");
-        var response = try query.send("backend");
+        var response = try query.send("google.com");
         const body = try response.body.readAll(&arena.allocator);
         std.debug.print("{}\n", .{body});
     }
