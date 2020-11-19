@@ -59,7 +59,7 @@ zig build-exe -Dtarget=wasm32-wasi
 or by defining the target as
 
 ```zig
-    const target = try std.zig.CrossTarget.parse(.{ .arch_os_abi = "wasm32-wasi" });
+const target = try std.zig.CrossTarget.parse(.{ .arch_os_abi = "wasm32-wasi" });
 ```
 
 in the `build.zig` file, compile to WebAssembly by default.

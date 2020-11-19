@@ -39,6 +39,7 @@ pub fn init() !void {
 const RequestHeaders = struct {
     handle: wasm.handle,
 
+    /// Return the full list of header names.
     pub fn names(self: RequestHeaders, allocator: *Allocator) ![][]const u8 {
         var names_list = ArrayList([]const u8).init(allocator);
         var cursor: u32 = 0;
@@ -77,6 +78,7 @@ const RequestHeaders = struct {
         return names_list.items;
     }
 
+    /// Return the value for a header.
     pub fn get(self: RequestHeaders, allocator: *Allocator, name: []const u8) ![]const u8 {
         var value_len_max: usize = 64;
         var value_buf = try allocator.alloc(u8, value_len_max);
@@ -94,6 +96,7 @@ const RequestHeaders = struct {
         return value_buf[0..value_len];
     }
 
+    /// Set the value for a header.
     pub fn set(self: *RequestHeaders, allocator: *Allocator, name: []const u8, value: []const u8) !void {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
@@ -101,6 +104,7 @@ const RequestHeaders = struct {
         try fastly(wasm.mod_fastly_http_req.header_values_set(self.handle, @ptrCast([*]const u8, name), name.len, @ptrCast([*]const u8, value0), value0.len));
     }
 
+    /// Append a value to a header.
     pub fn append(self: *RequestHeaders, allocator: *Allocator, name: []const u8, value: []const u8) !void {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
@@ -108,6 +112,7 @@ const RequestHeaders = struct {
         try fastly(wasm.mod_fastly_http_req.header_append(self.handle, @ptrCast([*]const u8, name), name.len, @ptrCast([*]const u8, value0), value0.len));
     }
 
+    /// Remove a header.
     pub fn remove(self: *RequestHeaders, name: []const u8) !void {
         try fastly(wasm.mod_fastly_http_req.header_remove(self.handle, @ptrCast([*]const u8, name), name.len));
     }
@@ -116,12 +121,15 @@ const RequestHeaders = struct {
 const IncomingBody = struct {
     handle: wasm.handle,
 
+    /// Possibly partial read of the body content.
+    /// An empty slice is returned when no data has to be read any more.
     pub fn read(self: *IncomingBody, buf: []u8) ![]u8 {
         var buf_len: usize = undefined;
         try fastly(wasm.mod_fastly_http_body.read(self.handle, @ptrCast([*]u8, buf), buf.len, &buf_len));
         return buf[0..buf_len];
     }
 
+    /// Read all the body content. This requires an allocator.
     pub fn readAll(self: *IncomingBody, allocator: *Allocator) ![]u8 {
         const chunk_size: usize = 4096;
         var buf_len = chunk_size;
@@ -140,6 +148,7 @@ const IncomingBody = struct {
         }
     }
 
+    /// Close the body reader.
     pub fn close(self: *IncomingBody) !void {
         try fastly(wasm.mod_fastly_http_body.close(self.handle));
     }
@@ -148,12 +157,14 @@ const IncomingBody = struct {
 const OutgoingBody = struct {
     handle: wasm.handle,
 
+    /// Add body content. The number of bytes that could be written is returned.
     pub fn write(self: *OutgoingBody, buf: []const u8) !usize {
         var written: usize = undefined;
         try fastly(wasm.mod_fastly_http_body.write(self.handle, @ptrCast([*]const u8, buf), buf.len, wasm.body_write_end.BACK, &written));
         return written;
     }
 
+    /// Add body content. The entire buffer is written.
     pub fn writeAll(self: *OutgoingBody, buf: []const u8) !void {
         var pos: usize = 0;
         while (pos < buf.len) {
@@ -162,15 +173,20 @@ const OutgoingBody = struct {
         }
     }
 
+    /// Close the body writer.
     pub fn close(self: *OutgoingBody) !void {
         try fastly(wasm.mod_fastly_http_body.close(self.handle));
     }
 };
 
+/// An HTTP request.
 pub const Request = struct {
+    /// The request headers.
     headers: RequestHeaders,
+    /// The request body.
     body: IncomingBody,
 
+    /// Return the initial request made to the proxy.
     pub fn downstream() !Request {
         var req_handle: wasm.handle = undefined;
         var body_handle: wasm.handle = undefined;
@@ -181,38 +197,45 @@ pub const Request = struct {
         };
     }
 
+    /// Copy the HTTP method used by this request.
     pub fn getMethod(self: Request, method: []u8) ![]u8 {
         var method_len: usize = undefined;
         try fastly(wasm.mod_fastly_http_req.method_get(self.headers.handle, @ptrCast([*]u8, method), method.len, &method_len));
         return method[0..method_len];
     }
 
+    /// Return `true` if the request uses the `GET` method.
     pub fn isGet(self: Request) !bool {
         var method_buf: [64]u8 = undefined;
         const method = try self.getMethod(&method_buf);
         return mem.eql(u8, method, "GET");
     }
 
+    /// Return `true` if the request uses the `POST` method.
     pub fn isPost(self: Request) !bool {
         var method_buf: [64]u8 = undefined;
         const method = try self.getMethod(&method_buf);
         return mem.eql(u8, method, "POST");
     }
 
+    /// Set the method of a request
     pub fn setMethod(self: Request, method: []const u8) !void {
         try fastly(wasm.mod_fastly_http_req.method_set(self.headers.handle, @ptrCast([*]const u8, method), method.len));
     }
 
+    /// Get the request URI
     pub fn getUri(self: Request, uri: []u8) ![]u8 {
         var uri_len: usize = undefined;
         try fastly(wasm.mod_fastly_http_req.uri_get(self.headers.handle, @ptrCast([*]u8, uri), uri.len, &uri_len));
         return uri[0..uri_len];
     }
 
+    /// Set the request URI
     pub fn setUri(self: Request, uri: []const u8) !void {
         try fastly(wasm.mod_fastly_http_req.uri_set(self.headers.handle, @ptrCast([*]const u8, uri), uri.len));
     }
 
+    /// Create a new request
     pub fn new(method: []const u8, uri: []const u8) !Request {
         var req_handle: wasm.handle = undefined;
         var body_handle: wasm.handle = undefined;
@@ -228,6 +251,7 @@ pub const Request = struct {
         return request;
     }
 
+    /// Send a request
     pub fn send(self: *Request, backend: []const u8) !IncomingResponse {
         var resp_handle: wasm.handle = undefined;
         var resp_body_handle: wasm.handle = undefined;
@@ -240,15 +264,12 @@ pub const Request = struct {
     }
 };
 
+/// Parse user agent information
 pub const UserAgent = struct {
-    pub fn parse(user_agent: []const u8) !struct { family: []const u8, major: []const u8, minor: []const u8, patch: []const u8 } {
-        var family: [256]u8 = undefined;
+    pub fn parse(user_agent: []const u8, family: []u8, major: []u8, minor: []u8, patch: []u8) !struct { family: []u8, major: []u8, minor: []u8, patch: []u8 } {
         var family_len: usize = undefined;
-        var major: [32]u8 = undefined;
         var major_len: usize = undefined;
-        var minor: [32]u8 = undefined;
         var minor_len: usize = undefined;
-        var patch: [32]u8 = undefined;
         var patch_len: usize = undefined;
         try fastly(wasm.mod_fastly_uap.parse(@ptrCast([*]const u8, user_agent), user_agent.len, &family, family.len, &family_len, &major, major.len, &major_len, &minor, minor.len, &minor_len, &patch, patch.len, &patch_len));
         const ret = .{
