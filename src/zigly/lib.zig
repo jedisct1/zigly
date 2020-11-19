@@ -96,6 +96,45 @@ const RequestHeaders = struct {
         return value_buf[0..value_len];
     }
 
+    /// Return all the values for a header.
+    pub fn getAll(self: RequestHeaders, allocator: *Allocator, name: []const u8) ![][]const u8 {
+        var values_list = ArrayList([]const u8).init(allocator);
+        var cursor: u32 = 0;
+        var cursor_next: i64 = 0;
+        while (true) {
+            var value_len_max: usize = 64;
+            var value_buf = try allocator.alloc(u8, value_len_max);
+            var value_len: usize = undefined;
+            while (true) {
+                value_len = ~@as(usize, 0);
+                const ret = fastly(wasm.mod_fastly_http_req.header_values_get(self.handle, @ptrCast([*]const u8, name), name.len, @ptrCast([*]u8, value_buf), value_len_max, cursor, &cursor_next, &value_len));
+                var retry = value_len == ~@as(usize, 0);
+                ret catch |err| {
+                    if (err != FastlyError.FastlyBufferTooSmall) {
+                        return err;
+                    }
+                    retry = true;
+                };
+                if (!retry) break;
+                value_len_max *= 2;
+                value_buf = try allocator.realloc(value_buf, value_len_max);
+            }
+            if (value_len == 0) {
+                break;
+            }
+            if (value_buf[value_len - 1] != 0) {
+                return FastlyError.FastlyGenericError;
+            }
+            const value = value_buf[0 .. value_len - 1];
+            try values_list.append(value);
+            if (cursor_next < 0) {
+                break;
+            }
+            cursor = @intCast(u32, cursor_next);
+        }
+        return values_list.items;
+    }
+
     /// Set the value for a header.
     pub fn set(self: *RequestHeaders, allocator: *Allocator, name: []const u8, value: []const u8) !void {
         var value0 = try allocator.alloc(u8, value.len + 1);
@@ -360,6 +399,45 @@ const ResponseHeaders = struct {
             }
         }
         return value_buf[0..value_len];
+    }
+
+    /// Return all the values for a header.
+    pub fn getAll(self: RequestHeaders, allocator: *Allocator, name: []const u8) ![][]const u8 {
+        var values_list = ArrayList([]const u8).init(allocator);
+        var cursor: u32 = 0;
+        var cursor_next: i64 = 0;
+        while (true) {
+            var value_len_max: usize = 64;
+            var value_buf = try allocator.alloc(u8, value_len_max);
+            var value_len: usize = undefined;
+            while (true) {
+                value_len = ~@as(usize, 0);
+                const ret = fastly(wasm.mod_fastly_http_resp.header_values_get(self.handle, @ptrCast([*]const u8, name), name.len, @ptrCast([*]u8, value_buf), value_len_max, cursor, &cursor_next, &value_len));
+                var retry = value_len == ~@as(usize, 0);
+                ret catch |err| {
+                    if (err != FastlyError.FastlyBufferTooSmall) {
+                        return err;
+                    }
+                    retry = true;
+                };
+                if (!retry) break;
+                value_len_max *= 2;
+                value_buf = try allocator.realloc(value_buf, value_len_max);
+            }
+            if (value_len == 0) {
+                break;
+            }
+            if (value_buf[value_len - 1] != 0) {
+                return FastlyError.FastlyGenericError;
+            }
+            const value = value_buf[0 .. value_len - 1];
+            try values_list.append(value);
+            if (cursor_next < 0) {
+                break;
+            }
+            cursor = @intCast(u32, cursor_next);
+        }
+        return values_list.items;
     }
 
     /// Set a header to a value.
