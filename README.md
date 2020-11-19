@@ -15,8 +15,8 @@ The service runs anything that can be compiled to WebAssembly, and exports a con
 
 Zig:
 
-- is very simple to learn
-- compiles quickly, providing a great developer experience
+- is fun and simple to learn
+- compiles very quickly, providing a great developer experience
 - can compile and use existing C and C++ code at no cost
 - is way safer than C and C++ by design, while retaining excellent performance
 - prints nice and useful error traces, on all platforms, including WebAssembly
@@ -29,9 +29,9 @@ Zig:
 
 Zigly is a library that makes it easy to write Compute@Edge modules in Zig.
 
-It is a work in progress, but the entire set of exported functions is going to be supported soon.
+It is a work in progress, but the entire set of exported functions is going to be supported soon, leveraging Zig's unique async mechanisms.
 
-Beyond the functions exported by the Fastly platform, Zigly will include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development even easier.
+Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
 ## Usage
 
