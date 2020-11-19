@@ -148,6 +148,36 @@ try query.body.close();
 
 And the resulting `response` contains `headers` and `body` properties, that can be inspected the same way as a downstream query.
 
+#### Cache override
+
+Caching can be disabled or configured on a per-query basis with `setCachingPolicy()`:
+
+```zig
+try query.setCachingPolicy(.{ .serve_stale = 600, .pci = true });
+```
+
+Attributes include:
+
+- `no_cache`
+- `ttl`
+- `serve_stale`
+- `pci`
+- `surrogate_key`
+
+#### Dictionaries
+
+```zig
+const dict = try Dictionary.open("name");
+const value = try dict.get(&allocator, "key");
+```
+
+#### Logging
+
+```zig
+const logger = try Logger.open("endpoint);
+try logger.write("Log entry");
+```
+
 ## Deployment to Fastly's platform
 
 The `fastly` command-line tool only supports Rust and AssemblyScript at the moment.
