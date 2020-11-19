@@ -302,7 +302,19 @@ pub const Request = struct {
         };
     }
 
-    pub const CachingPolicy = struct { no_cache: bool = false, ttl: ?u32 = null, serve_stale: ?u32 = null, pci: bool = false, surrogate_key: []const u8 = "" };
+    /// Caching policy
+    pub const CachingPolicy = struct {
+        /// Bypass the cache
+        no_cache: bool = false,
+        /// Enforce a sepcific TTL
+        ttl: ?u32 = null,
+        /// Return stale content up to this TTL if the origin is unreachable
+        serve_stale: ?u32 = null,
+        /// Activate PCI restrictions
+        pci: bool = false,
+        /// Cache with a surrogate key
+        surrogate_key: []const u8 = "",
+    };
 
     /// Force a caching policy for this request
     pub fn setCachingPolicy(self: *Request, policy: CachingPolicy) !void {
