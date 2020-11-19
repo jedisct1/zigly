@@ -14,7 +14,8 @@ fn start() !void {
 
     const parse = try UserAgent.parse("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36");
 
-    var request = try Request.downstream();
+    var downstream = try zigly.downstream();
+    var request = downstream.request;
 
     {
         var arena = ArenaAllocator.init(&gpa.allocator);
@@ -66,7 +67,6 @@ fn start() !void {
         var arena = ArenaAllocator.init(&gpa.allocator);
         defer arena.deinit();
 
-        var downstream = try zigly.downstream();
         var response = downstream.response;
         try response.headers.set(&arena.allocator, "X-MyHeader", "XYZ");
 
