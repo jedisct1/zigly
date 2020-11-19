@@ -218,24 +218,24 @@ pub const Request = struct {
         return mem.eql(u8, method, "POST");
     }
 
-    /// Set the method of a request
+    /// Set the method of a request.
     pub fn setMethod(self: Request, method: []const u8) !void {
         try fastly(wasm.mod_fastly_http_req.method_set(self.headers.handle, @ptrCast([*]const u8, method), method.len));
     }
 
-    /// Get the request URI
+    /// Get the request URI.
     pub fn getUri(self: Request, uri: []u8) ![]u8 {
         var uri_len: usize = undefined;
         try fastly(wasm.mod_fastly_http_req.uri_get(self.headers.handle, @ptrCast([*]u8, uri), uri.len, &uri_len));
         return uri[0..uri_len];
     }
 
-    /// Set the request URI
+    /// Set the request URI.
     pub fn setUri(self: Request, uri: []const u8) !void {
         try fastly(wasm.mod_fastly_http_req.uri_set(self.headers.handle, @ptrCast([*]const u8, uri), uri.len));
     }
 
-    /// Create a new request
+    /// Create a new request.
     pub fn new(method: []const u8, uri: []const u8) !Request {
         var req_handle: wasm.handle = undefined;
         var body_handle: wasm.handle = undefined;
@@ -251,7 +251,7 @@ pub const Request = struct {
         return request;
     }
 
-    /// Send a request
+    /// Send a request.
     pub fn send(self: *Request, backend: []const u8) !IncomingResponse {
         var resp_handle: wasm.handle = undefined;
         var resp_body_handle: wasm.handle = undefined;
@@ -264,7 +264,7 @@ pub const Request = struct {
     }
 };
 
-/// Parse user agent information
+/// Parse user agent information.
 pub const UserAgent = struct {
     pub fn parse(user_agent: []const u8, family: []u8, major: []u8, minor: []u8, patch: []u8) !struct { family: []u8, major: []u8, minor: []u8, patch: []u8 } {
         var family_len: usize = undefined;
@@ -285,6 +285,7 @@ pub const UserAgent = struct {
 const ResponseHeaders = struct {
     handle: wasm.handle,
 
+    /// Return the full list of header names.
     pub fn names(self: ResponseHeaders, allocator: *Allocator) ![][]const u8 {
         var names_list = ArrayList([]const u8).init(allocator);
         var cursor: u32 = 0;
@@ -323,6 +324,7 @@ const ResponseHeaders = struct {
         return names_list.items;
     }
 
+    /// Return the value for a header.
     pub fn get(self: ResponseHeaders, allocator: *Allocator, name: []const u8) ![]const u8 {
         var value_len_max: usize = 64;
         var value_buf = try allocator.alloc(u8, value_len_max);
@@ -340,6 +342,7 @@ const ResponseHeaders = struct {
         return value_buf[0..value_len];
     }
 
+    /// Set a header to a value.
     pub fn set(self: *ResponseHeaders, allocator: *Allocator, name: []const u8, value: []const u8) !void {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
@@ -347,6 +350,7 @@ const ResponseHeaders = struct {
         try fastly(wasm.mod_fastly_http_resp.header_values_set(self.handle, @ptrCast([*]const u8, name), name.len, @ptrCast([*]const u8, value0), value0.len));
     }
 
+    /// Append a value to a header.
     pub fn append(self: *ResponseHeaders, allocator: *Allocator, name: []const u8, value: []const u8) !void {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
@@ -354,6 +358,7 @@ const ResponseHeaders = struct {
         try fastly(wasm.mod_fastly_http_resp.header_append(self.handle, @ptrCast([*]const u8, name), name.len, @ptrCast([*]const u8, value0), value0.len));
     }
 
+    /// Remove a header.
     pub fn remove(self: *ResponseHeaders, name: []const u8) !void {
         try fastly(wasm.mod_fastly_http_resp.header_remove(self.handle, @ptrCast([*]const u8, name), name.len));
     }
@@ -364,6 +369,7 @@ const OutgoingResponse = struct {
     headers: ResponseHeaders,
     body: OutgoingBody,
 
+    /// The response to the initial query sent to the proxy.
     pub fn downstream() !OutgoingResponse {
         var resp_handle: wasm.handle = undefined;
         var body_handle: wasm.handle = undefined;
@@ -376,21 +382,25 @@ const OutgoingResponse = struct {
         };
     }
 
+    /// Send a buffered response, but doesn't close the stream.
     pub fn flush(self: *OutgoingResponse) !void {
         try fastly(wasm.mod_fastly_http_resp.send_downstream(self.handle, self.body.handle, 1));
     }
 
+    /// Send a buffered response and close the stream.
     pub fn finish(self: *OutgoingResponse) !void {
         try fastly(wasm.mod_fastly_http_resp.send_downstream(self.handle, self.body.handle, 0));
         try self.body.close();
     }
 
+    /// Get a the status code of a response.
     pub fn getStatus(self: OutgoingResponse) !u16 {
         var status: wasm.http_status = undefined;
         try fastly(wasm.mod_fastly_http_resp.status_get(self.handle));
         return @intCast(u16, status);
     }
 
+    /// Change the status code of a response.
     pub fn setStatus(self: *OutgoingResponse, status: u16) !void {
         try fastly(wasm.mod_fastly_http_resp.status_set(self.handle, @intCast(wasm.http_status, status)));
     }
@@ -401,6 +411,7 @@ const IncomingResponse = struct {
     headers: ResponseHeaders,
     body: IncomingBody,
 
+    /// Get the status code of a response.
     pub fn getStatus(self: IncomingResponse) !u16 {
         var status: wasm.http_status = undefined;
         try fastly(wasm.mod_fastly_http_resp.status_get(self.handle));
@@ -411,12 +422,14 @@ const IncomingResponse = struct {
 pub const Logger = struct {
     handle: wasm.handle,
 
+    /// Create a logger for a given endpoint.
     pub fn open(name: []const u8) !Logger {
         var handle: wasm.handle = undefined;
         try fastly(wasm.mod_fastly_log.endpoint_get(@ptrCast([*]const u8, name), name.len, &handle));
         return Logger{ .handle = handle };
     }
 
+    /// Send a message to a logging endpoint.
     pub fn write(self: *Logger, msg: []const u8) !void {
         var written: usize = undefined;
         try fastly(wasm.mod_fastly_log.write(self.handle, @ptrCast([*]const u8, msg), msg.len, &written));
@@ -424,10 +437,13 @@ pub const Logger = struct {
 };
 
 const Downstream = struct {
+    /// Initial request sent to the proxy.
     request: Request,
+    /// Response to the initial request sent to the proxy.
     response: OutgoingResponse,
 };
 
+/// The initial connection to the proxy.
 pub fn downstream() !Downstream {
     return Downstream{
         .request = try Request.downstream(),
