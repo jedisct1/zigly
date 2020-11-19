@@ -157,11 +157,12 @@ However, it can still be used to upload code written in other languages, includi
 fastly compute init
 ```
 
-Choose `rust` or `assemblyscript`, either will work.
+In the following steps, we are going to assume that the project name is `zigmodule`.
+For the language, select `rust` or `assemblyscript`, either will work.
 
 2. Remove everything except the `fastly.toml` file.
 
-3. Create a directory named `pkg/<your project nname>`. If the project is named `zigmodule`:
+3. Create a directory named `pkg/<your project nname>`.
 
 ```sh
 mkdir -p pkg/zigmodule
