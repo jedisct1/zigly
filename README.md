@@ -161,7 +161,7 @@ Choose `rust` or `assemblyscript`, either will work.
 
 2. Remove everything except the `fastly.toml` file.
 
-3. Create a directory names `pkg/<your project nname>`. If the project is named `zigmodule`:
+3. Create a directory named `pkg/<your project nname>`. If the project is named `zigmodule`:
 
 ```sh
 mkdir -p pkg/zigmodule
