@@ -87,6 +87,24 @@ That type includes `response`, that can be used to send a response, as well as `
 
 Every function call may fail with an error from the `FastlyError` set.
 
+Slightly more complicated example:
+
+```zig
+var downstream = try zigly.downstream();
+var response = downstream.response;
+
+response.setStatus(201);
+response.headers.set("X-Example", "Header");
+
+try response.body.writeAll("Partial");
+try response.flush();
+try response.body.writeAll("Response");
+try response.finish();
+
+var logger = Logger.open("logging_endpoint");
+logger.write("Operation sucessful!");
+```
+
 #### Inspecting incoming requests
 
 Applications can read the body of an incoming requests as well as other informations such as the headers:
@@ -112,7 +130,7 @@ var response = try query.send("backend");
 const body = try response.body.readAll(&allocator);
 ```
 
-Arbitrary headers can be added onto the outgoing `query`:
+Arbitrary headers can be added the the outgoing `query`:
 
 ```zig
 try query.headers.set("X-Custom-Header", "Custom value");
