@@ -66,6 +66,10 @@ in the `build.zig` file, compile to WebAssembly by default.
 
 Once testing has been done, compile with `-Drelease-small` or `-Drelease-fast` to get small, optimized modules.
 
+### Testing Compute@Edge modules
+
+The easiest way to test the resulting modules is currently to use [Fastlike](https://github.com/avidal/fastlike), a partial reimplementation of the Fastly API that runs locally, on any operating system supported by the Go language.
+
 ### Using Zigly
 
 Documentation in progress!
