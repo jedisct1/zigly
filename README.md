@@ -72,5 +72,16 @@ The easiest way to test the resulting modules is currently to use [Fastlike](htt
 
 ### Using Zigly
 
-Documentation in progress!
+```zig
+var downstream = try zigly.downstream();
+var response = downstream.response;
+try response.body.writeAll("Hello world!");
+try response.finish();
+```        
+
+`downstream()` returns a type representing the initial connection, from a client to the proxy.
+
+That type includes `response`, that can be used to send a response, as well as `request`, that can be used to inspect the incoming request.
+
+Every function call may fail with an error from the `FastlyError` set.
 

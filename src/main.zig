@@ -1,3 +1,6 @@
+// These are just examples to exercise the bindings
+// Only `zigly.zig` needs to be included in your actual applications.
+
 const std = @import("std");
 const ArenaAllocator = std.heap.ArenaAllocator;
 
