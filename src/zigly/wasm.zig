@@ -15,6 +15,7 @@ pub const fastly_status = enum(u32) {
     HTTPPARSE = 7,
     HTTPUSER = 8,
     HTTPINCOMPLETE = 9,
+    NONE = 10,
 };
 
 // http_version
@@ -49,6 +50,9 @@ pub const pending_request_handle = handle;
 
 // endpoint_handle
 pub const endpoint_handle = handle;
+
+// dictionary_handle
+pub const dictionary_handle = handle;
 
 // multi_value_cursor
 pub const multi_value_cursor = u32;
@@ -343,4 +347,18 @@ pub const mod_fastly_http_resp = struct {
     // in:  h, status
     // out: err
     pub extern "fastly_http_resp" fn status_set(h: response_handle, status: http_status) callconv(.C) fastly_status;
+};
+
+// ----------------------[fastly_dictionary]----------------------
+
+pub const mod_fastly_dictionary = struct {
+    // open
+    // in:  name
+    // out: err, h
+    pub extern "fastly_dictionary" fn open(name_ptr: [*]const char, name_len: usize, h_ptr: *dictionary_handle) callconv(.C) fastly_status;
+
+    // get
+    // in:  h, key, value, value_max_len
+    // out: err, nwritten
+    pub extern "fastly_dictionary" fn get(h: dictionary_handle, key_ptr: [*]const char, key_len: usize, value: [*]char, value_max_len: usize, nwritten_ptr: *usize) callconv(.C) fastly_status;
 };
