@@ -178,7 +178,7 @@ cp fastly.toml pkg/zigmodule/
 
 ```sh
 mkdir -p pkg/zigmodule/bin
-cp /tmp/main.wasm pkg/zigmodule/bin/main.wasm
+cp /tmp/z/zig-cache/bin/main.wasm pkg/zigmodule/bin/main.wasm
 ```
 
 6. Archive the directory:
