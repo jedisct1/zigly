@@ -49,8 +49,7 @@ pub export fn _start() callconv(.C) void {
 }
 ```
 
-The `_start()` function is important, and must have that exact type. No `main()` function is required in our case.
-We simply use a distinct `start()` function in order to catch errors, since the `_start()` function, as expected by the WebAssembly interface, cannot handle Zig errors.
+The `_start()` function must have that exact type. It replaces the `main()` function.
 
 The program can be compiled with:
 
