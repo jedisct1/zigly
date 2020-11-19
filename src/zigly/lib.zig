@@ -262,6 +262,26 @@ pub const Request = struct {
             .body = IncomingBody{ .handle = resp_body_handle },
         };
     }
+
+    pub const CachingPolicy = struct { no_cache: bool = false, ttl: ?u32 = null, serve_stale: ?u32 = null, pci: bool = false, surrogate_key: []const u8 = "" };
+
+    /// Force a caching policy for this request
+    pub fn setCachingPolicy(self: *Request, policy: CachingPolicy) !void {
+        var wasm_policy: wasm.cache_override_tag = 0;
+        if (policy.no_cache) {
+            wasm_policy |= wasm.cache_override_tag_bits.PASS;
+        }
+        if (policy.ttl) |ttl| {
+            wasm_policy |= wasm.cache_override_tag_bits.TTL;
+        }
+        if (policy.serve_stale) |_| {
+            wasm_policy |= wasm.cache_override_tag_bits.STALE_WHILE_REVALIDATE;
+        }
+        if (policy.pci) {
+            wasm_policy |= wasm.cache_override_tag_bits.PCI;
+        }
+        try fastly(wasm.mod_fastly_http_req.cache_override_v2_set(self.headers.handle, wasm_policy, policy.ttl orelse 0, policy.serve_stale orelse 0, @ptrCast([*]const u8, policy.surrogate_key), policy.surrogate_key.len));
+    }
 };
 
 /// Parse user agent information.

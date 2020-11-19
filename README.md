@@ -145,7 +145,7 @@ try query.body.close();
 
 And the resulting `response` contains `headers` and `body` properties, that can be inspected the same way as a downstream query.
 
-## Deployment on Fastly's platform
+## Deployment to Fastly's platform
 
 The `fastly` command-line tool only supports Rust and AssemblyScript at the moment.
 However, it can still be used to upload code written in other languages, including Zig.
