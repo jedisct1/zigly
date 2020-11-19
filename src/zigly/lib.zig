@@ -5,68 +5,18 @@ const ArenaAllocator = std.heap.ArenaAllocator;
 const ArrayList = std.ArrayList;
 const Allocator = mem.Allocator;
 
-pub const FastlyError = error{
-    FastlyGenericError,
-    FastlyInvalidValue,
-    FastlyBadDescriptor,
-    FastlyBufferTooSmall,
-    FastlyUnsupported,
-    FastlyWrongAlignment,
-    FastlyHttpParserError,
-    FastlyHttpUserError,
-    FastlyHttpIncomplete,
-    FastlyNone,
-};
+const errors = @import("errors.zig");
+const fastly = errors.fastly;
 
-fn fastly(fastly_status: wasm.fastly_status) FastlyError!void {
-    switch (fastly_status) {
-        wasm.fastly_status.OK => return,
-        wasm.fastly_status.ERROR => return FastlyError.FastlyGenericError,
-        wasm.fastly_status.INVAL => return FastlyError.FastlyInvalidValue,
-        wasm.fastly_status.BADF => return FastlyError.FastlyBadDescriptor,
-        wasm.fastly_status.BUFLEN => return FastlyError.FastlyBufferTooSmall,
-        wasm.fastly_status.UNSUPPORTED => return FastlyError.FastlyUnsupported,
-        wasm.fastly_status.BADALIGN => return FastlyError.FastlyWrongAlignment,
-        wasm.fastly_status.HTTPPARSE => return FastlyError.FastlyHttpParserError,
-        wasm.fastly_status.HTTPUSER => return FastlyError.FastlyHttpUserError,
-        wasm.fastly_status.HTTPINCOMPLETE => return FastlyError.FastlyHttpIncomplete,
-        wasm.fastly_status.NONE => return FastlyError.FastlyNone,
-    }
-}
+pub const FastlyError = errors.FastlyError;
+pub const UserAgent = @import("useragent.zig");
+pub const Dictionary = @import("dictionary.zig");
+pub const Logger = @import("logger.zig");
 
 /// Check that the module is compatible with the current version of the API.
 pub fn compatibilityCheck() !void {
     try fastly(wasm.mod_fastly_abi.init(1));
 }
-
-pub const Dictionary = struct {
-    handle: wasm.handle,
-
-    /// Access a dictionary given its name.
-    pub fn open(name: []const u8) !Dictionary {
-        var handle: wasm.handle = undefined;
-        try fastly(wasm.mod_fastly_dictionary.open(@ptrCast([*]const u8, name), name.len, &handle));
-        return Dictionary{ .handle = handle };
-    }
-
-    /// Get the value associated to a key.
-    pub fn get(self: Dictionary, allocator: *Allocator, name: []const u8) ![]const u8 {
-        var value_len_max: usize = 64;
-        var value_buf = try allocator.alloc(u8, value_len_max);
-        var value_len: usize = undefined;
-        while (true) {
-            const ret = wasm.mod_fastly_dictionary.get(self.handle, @ptrCast([*]const u8, name), name.len, @ptrCast([*]u8, value_buf), value_len_max, &value_len);
-            if (ret) break else |err| {
-                if (err != FastlyError.FastlyBufferTooSmall) {
-                    return err;
-                }
-                value_len_max *= 2;
-                value_buf = try allocator.realloc(name_buf, value_len_max);
-            }
-        }
-        return value_buf[0..value_len];
-    }
-};
 
 const RequestHeaders = struct {
     handle: wasm.handle,
@@ -367,24 +317,6 @@ pub const Request = struct {
     }
 };
 
-/// Parse user agent information.
-pub const UserAgent = struct {
-    pub fn parse(user_agent: []const u8, family: []u8, major: []u8, minor: []u8, patch: []u8) !struct { family: []u8, major: []u8, minor: []u8, patch: []u8 } {
-        var family_len: usize = undefined;
-        var major_len: usize = undefined;
-        var minor_len: usize = undefined;
-        var patch_len: usize = undefined;
-        try fastly(wasm.mod_fastly_uap.parse(@ptrCast([*]const u8, user_agent), user_agent.len, &family, family.len, &family_len, &major, major.len, &major_len, &minor, minor.len, &minor_len, &patch, patch.len, &patch_len));
-        const ret = .{
-            .family = family[0..family_len],
-            .major = major[0..major_len],
-            .minor = minor[0..minor_len],
-            .patch = patch[0..patch_len],
-        };
-        return ret;
-    }
-};
-
 const ResponseHeaders = struct {
     handle: wasm.handle,
 
@@ -558,23 +490,6 @@ const IncomingResponse = struct {
         var status: wasm.http_status = undefined;
         try fastly(wasm.mod_fastly_http_resp.status_get(self.handle));
         return @intCast(u16, status);
-    }
-};
-
-pub const Logger = struct {
-    handle: wasm.handle,
-
-    /// Create a logger for a given endpoint.
-    pub fn open(name: []const u8) !Logger {
-        var handle: wasm.handle = undefined;
-        try fastly(wasm.mod_fastly_log.endpoint_get(@ptrCast([*]const u8, name), name.len, &handle));
-        return Logger{ .handle = handle };
-    }
-
-    /// Send a message to a logging endpoint.
-    pub fn write(self: *Logger, msg: []const u8) !void {
-        var written: usize = undefined;
-        try fastly(wasm.mod_fastly_log.write(self.handle, @ptrCast([*]const u8, msg), msg.len, &written));
     }
 };
 
