@@ -19,16 +19,19 @@ Zig:
 - compiles quickly, providing a great developer experience
 - can compile and use existing C and C++ code at no cost
 - is way safer than C and C++ by design
-- prints nice and useful error traces, on all platforms, including WebAssembly.
+- prints nice and useful error traces, on all platforms, including WebAssembly
 - comes with a rich standard library, avoiding the need for many external dependencies
 - has excellent support for WebAssembly
-- creates small, fast, standalone executables and WebAssembly modules.
+- creates small, fast, standalone executables and WebAssembly modules
+- can now be used on Compute@Edge!
 
 ## What is Zigly?
 
 Zigly is a library that makes it easy to write Compute@Edge modules in Zig.
 
 It is a work in progress, but the entire set of exported functions is going to be supported soon.
+
+Beyond the functions exported by the Fastly platform, Zigly will include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development even easier.
 
 ## Usage
 
