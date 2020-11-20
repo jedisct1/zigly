@@ -79,9 +79,8 @@ fn start() !void {
         var arena = ArenaAllocator.init(&gpa.allocator);
         defer arena.deinit();
         var query = try Request.new("GET", "http://google.com");
-        var upresponse = try query.send("google.com");
-        var downstream = try zigly.downstream();
-        try downstream.response.pipe(&upresponse, false, false);
+        var upstream_response = try query.send("google.com");
+        try downstream.response.pipe(&upstream_response, false, false);
     }
 }
 
