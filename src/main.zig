@@ -58,7 +58,7 @@ fn start() !void {
         var arena = ArenaAllocator.init(&gpa.allocator);
         defer arena.deinit();
         var query = try Request.new("GET", "http://google.com");
-        try query.setCachingPolicy(.{ .no_cache = true, .pci = true });
+        try query.setCachingPolicy(.{ .no_cache = true });
         var response = try query.send("google.com");
         const body = try response.body.readAll(&arena.allocator);
         std.debug.print("{}\n", .{body});
@@ -79,7 +79,6 @@ fn start() !void {
         var arena = ArenaAllocator.init(&gpa.allocator);
         defer arena.deinit();
         var query = try Request.new("GET", "http://google.com");
-        try query.setCachingPolicy(.{ .no_cache = true, .pci = true });
         var upresponse = try query.send("google.com");
         try (try zigly.downstream()).response.pipe(&upresponse, false, false);
     }
