@@ -106,6 +106,8 @@ var logger = Logger.open("logging_endpoint");
 logger.write("Operation sucessful!");
 ```
 
+Note that calling `finish()` is always required in order to actually send a response to the client.
+
 #### Inspecting incoming requests
 
 Applications can read the body of an incoming requests as well as other informations such as the headers:
