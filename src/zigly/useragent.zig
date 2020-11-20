@@ -8,7 +8,7 @@ pub const UserAgent = struct {
         var major_len: usize = undefined;
         var minor_len: usize = undefined;
         var patch_len: usize = undefined;
-        try fastly(wasm.mod_fastly_uap.parse(@ptrCast([*]const u8, user_agent), user_agent.len, &family, family.len, &family_len, &major, major.len, &major_len, &minor, minor.len, &minor_len, &patch, patch.len, &patch_len));
+        try fastly(wasm.mod_fastly_uap.parse(@ptrCast([*]const u8, user_agent.ptr), user_agent.len, &family, family.len, &family_len, &major, major.len, &major_len, &minor, minor.len, &minor_len, &patch, patch.len, &patch_len));
         const ret = .{
             .family = family[0..family_len],
             .major = major[0..major_len],
