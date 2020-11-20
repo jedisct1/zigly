@@ -460,7 +460,7 @@ const OutgoingResponse = struct {
     /// Get a the status code of a response.
     pub fn getStatus(self: OutgoingResponse) !u16 {
         var status: wasm.http_status = undefined;
-        try fastly(wasm.mod_fastly_http_resp.status_get(self.handle));
+        try fastly(wasm.mod_fastly_http_resp.status_get(self.handle, &status));
         return @intCast(u16, status);
     }
 
@@ -488,7 +488,7 @@ const IncomingResponse = struct {
     /// Get the status code of a response.
     pub fn getStatus(self: IncomingResponse) !u16 {
         var status: wasm.http_status = undefined;
-        try fastly(wasm.mod_fastly_http_resp.status_get(self.handle));
+        try fastly(wasm.mod_fastly_http_resp.status_get(self.handle, &status));
         return @intCast(u16, status);
     }
 };

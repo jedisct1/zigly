@@ -73,7 +73,15 @@ fn start() !void {
 
         try response.setStatus(205);
         try response.body.writeAll("OK!\n");
-        try response.finish();
+    }
+
+    {
+        var arena = ArenaAllocator.init(&gpa.allocator);
+        defer arena.deinit();
+        var query = try Request.new("GET", "http://google.com");
+        try query.setCachingPolicy(.{ .no_cache = true, .pci = true });
+        var upresponse = try query.send("google.com");
+        try (try zigly.downstream()).response.pipe(&upresponse, false, false);
     }
 }
 
