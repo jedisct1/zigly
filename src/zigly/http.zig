@@ -108,11 +108,8 @@ const RequestHeaders = struct {
     }
 
     /// Set the value for a header.
-    pub fn set(self: *RequestHeaders, allocator: *Allocator, name: []const u8, value: []const u8) !void {
-        var value0 = try allocator.alloc(u8, value.len + 1);
-        mem.copy(u8, value0[0..value.len], value);
-        value0[value.len] = 0;
-        try fastly(wasm.mod_fastly_http_req.header_values_set(self.handle, name.ptr, name.len, value0.ptr, value0.len));
+    pub fn set(self: *RequestHeaders, name: []const u8, value: []const u8) !void {
+        try fastly(wasm.mod_fastly_http_req.header_insert(self.handle, name.ptr, name.len, value.ptr, value.len));
     }
 
     /// Append a value to a header.
@@ -407,11 +404,8 @@ const ResponseHeaders = struct {
     }
 
     /// Set a header to a value.
-    pub fn set(self: *ResponseHeaders, allocator: *Allocator, name: []const u8, value: []const u8) !void {
-        var value0 = try allocator.alloc(u8, value.len + 1);
-        mem.copy(u8, value0[0..value.len], value);
-        value0[value.len] = 0;
-        try fastly(wasm.mod_fastly_http_resp.header_values_set(self.handle, name.ptr, name.len, value0.ptr, value0.len));
+    pub fn set(self: *ResponseHeaders, name: []const u8, value: []const u8) !void {
+        try fastly(wasm.mod_fastly_http_resp.header_insert(self.handle, name.ptr, name.len, value.ptr, value.len));
     }
 
     /// Append a value to a header.

@@ -37,7 +37,7 @@ fn start() !void {
     {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
-        try request.headers.set(&arena.allocator, "x-test", "test");
+        try request.headers.set("x-test", "test");
         try request.headers.remove("x-test");
     }
 
@@ -70,7 +70,7 @@ fn start() !void {
         defer arena.deinit();
 
         var response = downstream.response;
-        try response.headers.set(&arena.allocator, "X-MyHeader", "XYZ");
+        try response.headers.set("X-MyHeader", "XYZ");
 
         try response.setStatus(205);
         try response.body.writeAll("OK!\n");
