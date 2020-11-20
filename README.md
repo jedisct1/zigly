@@ -54,7 +54,7 @@ The `_start()` function must have that exact type. It replaces the `main()` func
 The program can be compiled with:
 
 ```sh
-zig build-exe -Dtarget=wasm32-wasi
+zig build-exe -target=wasm32-wasi
 ```
 
 or by defining the target as
