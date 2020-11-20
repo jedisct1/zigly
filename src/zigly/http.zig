@@ -22,7 +22,7 @@ const RequestHeaders = struct {
             var name_len: usize = undefined;
             while (true) {
                 name_len = ~@as(usize, 0);
-                const ret = fastly(wasm.mod_fastly_http_req.header_names_get(self.handle, @ptrCast([*]u8, name_buf.ptr), name_len_max, cursor, &cursor_next, &name_len));
+                const ret = fastly(wasm.mod_fastly_http_req.header_names_get(self.handle, name_buf.ptr, name_len_max, cursor, &cursor_next, &name_len));
                 var retry = name_len == ~@as(usize, 0);
                 ret catch |err| {
                     if (err != FastlyError.FastlyBufferTooSmall) {
@@ -56,7 +56,7 @@ const RequestHeaders = struct {
         var value_buf = try allocator.alloc(u8, value_len_max);
         var value_len: usize = undefined;
         while (true) {
-            const ret = wasm.mod_fastly_http_req.header_value_get(self.handle, @ptrCast([*]const u8, name.ptr), name.len, @ptrCast([*]u8, value_buf.ptr), value_len_max, &value_len);
+            const ret = wasm.mod_fastly_http_req.header_value_get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, &value_len);
             if (ret) break else |err| {
                 if (err != FastlyError.FastlyBufferTooSmall) {
                     return err;
@@ -79,7 +79,7 @@ const RequestHeaders = struct {
             var value_len: usize = undefined;
             while (true) {
                 value_len = ~@as(usize, 0);
-                const ret = fastly(wasm.mod_fastly_http_req.header_values_get(self.handle, @ptrCast([*]const u8, name.ptr), name.len, @ptrCast([*]u8, value_buf.ptr), value_len_max, cursor, &cursor_next, &value_len));
+                const ret = fastly(wasm.mod_fastly_http_req.header_values_get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, cursor, &cursor_next, &value_len));
                 var retry = value_len == ~@as(usize, 0);
                 ret catch |err| {
                     if (err != FastlyError.FastlyBufferTooSmall) {
@@ -112,7 +112,7 @@ const RequestHeaders = struct {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
         value0[value.len] = 0;
-        try fastly(wasm.mod_fastly_http_req.header_values_set(self.handle, @ptrCast([*]const u8, name.ptr), name.len, @ptrCast([*]const u8, value0.ptr), value0.len));
+        try fastly(wasm.mod_fastly_http_req.header_values_set(self.handle, name.ptr, name.len, value0.ptr, value0.len));
     }
 
     /// Append a value to a header.
@@ -120,12 +120,12 @@ const RequestHeaders = struct {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
         value0[value.len] = 0;
-        try fastly(wasm.mod_fastly_http_req.header_append(self.handle, @ptrCast([*]const u8, name.ptr), name.len, @ptrCast([*]const u8, value0.ptr), value0.len));
+        try fastly(wasm.mod_fastly_http_req.header_append(self.handle, name.ptr, name.len, value0.ptr, value0.len));
     }
 
     /// Remove a header.
     pub fn remove(self: *RequestHeaders, name: []const u8) !void {
-        try fastly(wasm.mod_fastly_http_req.header_remove(self.handle, @ptrCast([*]const u8, name.ptr), name.len));
+        try fastly(wasm.mod_fastly_http_req.header_remove(self.handle, name.ptr, name.len));
     }
 };
 
@@ -136,7 +136,7 @@ const IncomingBody = struct {
     /// An empty slice is returned when no data has to be read any more.
     pub fn read(self: *IncomingBody, buf: []u8) ![]u8 {
         var buf_len: usize = undefined;
-        try fastly(wasm.mod_fastly_http_body.read(self.handle, @ptrCast([*]u8, buf.ptr), buf.len, &buf_len));
+        try fastly(wasm.mod_fastly_http_body.read(self.handle, buf.ptr, buf.len, &buf_len));
         return buf[0..buf_len];
     }
 
@@ -171,7 +171,7 @@ const OutgoingBody = struct {
     /// Add body content. The number of bytes that could be written is returned.
     pub fn write(self: *OutgoingBody, buf: []const u8) !usize {
         var written: usize = undefined;
-        try fastly(wasm.mod_fastly_http_body.write(self.handle, @ptrCast([*]const u8, buf.ptr), buf.len, wasm.body_write_end.BACK, &written));
+        try fastly(wasm.mod_fastly_http_body.write(self.handle, buf.ptr, buf.len, wasm.body_write_end.BACK, &written));
         return written;
     }
 
@@ -211,7 +211,7 @@ pub const Request = struct {
     /// Copy the HTTP method used by this request.
     pub fn getMethod(self: Request, method: []u8) ![]u8 {
         var method_len: usize = undefined;
-        try fastly(wasm.mod_fastly_http_req.method_get(self.headers.handle, @ptrCast([*]u8, method.ptr), method.len, &method_len));
+        try fastly(wasm.mod_fastly_http_req.method_get(self.headers.handle, method.ptr, method.len, &method_len));
         return method[0..method_len];
     }
 
@@ -231,19 +231,19 @@ pub const Request = struct {
 
     /// Set the method of a request.
     pub fn setMethod(self: Request, method: []const u8) !void {
-        try fastly(wasm.mod_fastly_http_req.method_set(self.headers.handle, @ptrCast([*]const u8, method.ptr), method.len));
+        try fastly(wasm.mod_fastly_http_req.method_set(self.headers.handle, method.ptr, method.len));
     }
 
     /// Get the request URI.
     pub fn getUri(self: Request, uri: []u8) ![]u8 {
         var uri_len: usize = undefined;
-        try fastly(wasm.mod_fastly_http_req.uri_get(self.headers.handle, @ptrCast([*]u8, uri.ptr), uri.len, &uri_len));
+        try fastly(wasm.mod_fastly_http_req.uri_get(self.headers.handle, uri.ptr, uri.len, &uri_len));
         return uri[0..uri_len];
     }
 
     /// Set the request URI.
     pub fn setUri(self: Request, uri: []const u8) !void {
-        try fastly(wasm.mod_fastly_http_req.uri_set(self.headers.handle, @ptrCast([*]const u8, uri.ptr), uri.len));
+        try fastly(wasm.mod_fastly_http_req.uri_set(self.headers.handle, uri.ptr, uri.len));
     }
 
     /// Create a new request.
@@ -266,7 +266,7 @@ pub const Request = struct {
     pub fn send(self: *Request, backend: []const u8) !IncomingResponse {
         var resp_handle: wasm.handle = undefined;
         var resp_body_handle: wasm.handle = undefined;
-        try fastly(wasm.mod_fastly_http_req.send(self.headers.handle, self.body.handle, @ptrCast([*]const u8, backend.ptr), backend.len, &resp_handle, &resp_body_handle));
+        try fastly(wasm.mod_fastly_http_req.send(self.headers.handle, self.body.handle, backend.ptr, backend.len, &resp_handle, &resp_body_handle));
         return IncomingResponse{
             .handle = resp_handle,
             .headers = ResponseHeaders{ .handle = resp_handle },
@@ -303,7 +303,7 @@ pub const Request = struct {
         if (policy.pci) {
             wasm_policy |= wasm.cache_override_tag_bits.PCI;
         }
-        try fastly(wasm.mod_fastly_http_req.cache_override_v2_set(self.headers.handle, wasm_policy, policy.ttl orelse 0, policy.serve_stale orelse 0, @ptrCast([*]const u8, policy.surrogate_key.ptr), policy.surrogate_key.len));
+        try fastly(wasm.mod_fastly_http_req.cache_override_v2_set(self.headers.handle, wasm_policy, policy.ttl orelse 0, policy.serve_stale orelse 0, policy.surrogate_key.ptr, policy.surrogate_key.len));
     }
 };
 
@@ -321,7 +321,7 @@ const ResponseHeaders = struct {
             var name_len: usize = undefined;
             while (true) {
                 name_len = ~@as(usize, 0);
-                const ret = fastly(wasm.mod_fastly_http_resp.header_names_get(self.handle, @ptrCast([*]u8, name_buf.ptr), name_len_max, cursor, &cursor_next, &name_len));
+                const ret = fastly(wasm.mod_fastly_http_resp.header_names_get(self.handle, name_buf.ptr, name_len_max, cursor, &cursor_next, &name_len));
                 var retry = name_len == ~@as(usize, 0);
                 ret catch |err| {
                     if (err != FastlyError.FastlyBufferTooSmall) {
@@ -355,7 +355,7 @@ const ResponseHeaders = struct {
         var value_buf = try allocator.alloc(u8, value_len_max);
         var value_len: usize = undefined;
         while (true) {
-            const ret = wasm.mod_fastly_http_resp.header_value_get(self.handle, @ptrCast([*]const u8, name.ptr), name.len, @ptrCast([*]u8, value_buf.ptr), value_len_max, &value_len);
+            const ret = wasm.mod_fastly_http_resp.header_value_get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, &value_len);
             if (ret) break else |err| {
                 if (err != FastlyError.FastlyBufferTooSmall) {
                     return err;
@@ -378,7 +378,7 @@ const ResponseHeaders = struct {
             var value_len: usize = undefined;
             while (true) {
                 value_len = ~@as(usize, 0);
-                const ret = fastly(wasm.mod_fastly_http_resp.header_values_get(self.handle, @ptrCast([*]const u8, name.ptr), name.len, @ptrCast([*]u8, value_buf.ptr), value_len_max, cursor, &cursor_next, &value_len));
+                const ret = fastly(wasm.mod_fastly_http_resp.header_values_get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, cursor, &cursor_next, &value_len));
                 var retry = value_len == ~@as(usize, 0);
                 ret catch |err| {
                     if (err != FastlyError.FastlyBufferTooSmall) {
@@ -411,7 +411,7 @@ const ResponseHeaders = struct {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
         value0[value.len] = 0;
-        try fastly(wasm.mod_fastly_http_resp.header_values_set(self.handle, @ptrCast([*]const u8, name.ptr), name.len, @ptrCast([*]const u8, value0.ptr), value0.len));
+        try fastly(wasm.mod_fastly_http_resp.header_values_set(self.handle, name.ptr, name.len, value0.ptr, value0.len));
     }
 
     /// Append a value to a header.
@@ -419,12 +419,12 @@ const ResponseHeaders = struct {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
         value0[value.len] = 0;
-        try fastly(wasm.mod_fastly_http_resp.header_append(self.handle, @ptrCast([*]const u8, name.ptr), name.len, @ptrCast([*]const u8, value0.ptr), value0.len));
+        try fastly(wasm.mod_fastly_http_resp.header_append(self.handle, name.ptr, name.len, value0.ptr, value0.len));
     }
 
     /// Remove a header.
     pub fn remove(self: *ResponseHeaders, name: []const u8) !void {
-        try fastly(wasm.mod_fastly_http_resp.header_remove(self.handle, @ptrCast([*]const u8, name.ptr), name.len));
+        try fastly(wasm.mod_fastly_http_resp.header_remove(self.handle, name.ptr, name.len));
     }
 };
 
