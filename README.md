@@ -163,6 +163,17 @@ Attributes include:
 - `pci`
 - `surrogate_key`
 
+#### Pipes
+
+With `pipe()`, the response sent to a client can be a direct copy of another response. The application will then act as a proxy, optionally also copying the original status and headers.
+
+```zig
+var query = try Request.new("GET", "http://google.com");
+var upstream_response = try query.send("google.com");
+var downstream = try zigly.downstream()
+try downstream.response.pipe(&upstream_response, true, true);
+```
+
 #### Dictionaries
 
 ```zig

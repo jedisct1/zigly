@@ -80,7 +80,8 @@ fn start() !void {
         defer arena.deinit();
         var query = try Request.new("GET", "http://google.com");
         var upresponse = try query.send("google.com");
-        try (try zigly.downstream()).response.pipe(&upresponse, false, false);
+        var downstream = try zigly.downstream();
+        try downstream.response.pipe(&upresponse, false, false);
     }
 }
 
