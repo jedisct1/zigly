@@ -468,6 +468,11 @@ const OutgoingResponse = struct {
     pub fn setStatus(self: *OutgoingResponse, status: u16) !void {
         try fastly(wasm.mod_fastly_http_resp.status_set(self.handle, @intCast(wasm.http_status, status)));
     }
+
+    /// Zero-copy the content of an incoming response.
+    pub fn pipe(self: *OutgoingResponse, incoming: *IncomingResponse, copy_headers: bool) !void {
+        try fastly(wasm.mod_fastly_http_resp.send_downstream(if (copy_headers) incoming.handle else self.handle, incoming.body.handle, 0));
+    }
 };
 
 const IncomingResponse = struct {
