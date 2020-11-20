@@ -470,7 +470,12 @@ const OutgoingResponse = struct {
     }
 
     /// Zero-copy the content of an incoming response.
-    pub fn pipe(self: *OutgoingResponse, incoming: *IncomingResponse, copy_headers: bool) !void {
+    /// The status from the incoming response is copied if `copy_status` is set to `true`,
+    /// and the headers are copied if `copy_headers` is set to `true`.
+    pub fn pipe(self: *OutgoingResponse, incoming: *IncomingResponse, copy_status: bool, copy_headers: bool) !void {
+        if (copy_status) {
+            try self.setStatus(try incoming.getStatus());
+        }
         try fastly(wasm.mod_fastly_http_resp.send_downstream(if (copy_headers) incoming.handle else self.handle, incoming.body.handle, 0));
     }
 };
