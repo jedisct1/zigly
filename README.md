@@ -1,7 +1,7 @@
 ![Zigly](logo.png)
 ========
 
-This is Zigly. A library to write Compute@Edge services in pure Zig.
+The easiest way to write Compute@Edge services.
 
 ## What is Compute@Edge?
 
@@ -11,7 +11,7 @@ The service runs anything that can be compiled to WebAssembly, and exports a con
 
 ## What is Zig?
 
-[Zig](https://ziglang.org) defines itself as "a general-purpose programming language and toolchain for maintaining robust, optimal, and reusable software".
+[Zig](https://ziglang.org) is general-purpose programming language and toolchain for maintaining robust, optimal, and reusable software.
 
 Zig:
 
@@ -28,8 +28,6 @@ Zig:
 ## What is Zigly?
 
 Zigly is a library that makes it easy to write Compute@Edge modules in Zig.
-
-It is a work in progress, but the entire set of exported functions is going to be supported soon, leveraging Zig's unique async mechanisms.
 
 Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
@@ -51,19 +49,19 @@ pub export fn _start() callconv(.C) void {
 
 The `_start()` function must have that exact type. It replaces the `main()` function.
 
-The program can be compiled with:
+The program can be compiled with (replace `example.zig` with the source file name):
 
 ```sh
-zig build-exe -target wasm32-wasi
+zig build-exe -target wasm32-wasi example.zig
 ```
 
-or by defining the target as
+or, if you are using a build file, by defining the target as
 
 ```zig
 const target = try std.zig.CrossTarget.parse(.{ .arch_os_abi = "wasm32-wasi" });
 ```
 
-in the `build.zig` file, compile to WebAssembly by default.
+in the `build.zig` file to compile to WebAssembly by default.
 
 Once testing has been done, compile with `-Drelease-small` or `-Drelease-fast` to get small, optimized modules.
 
