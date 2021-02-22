@@ -22,7 +22,7 @@ fn start() !void {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
         const body = try request.body.readAll(&arena.allocator);
-        std.debug.print("[{}]\n", .{body});
+        std.debug.print("[{s}]\n", .{body});
     }
 
     {
@@ -30,7 +30,7 @@ fn start() !void {
         defer arena.deinit();
         const names = try request.headers.names(&arena.allocator);
         for (names) |name| {
-            std.debug.print("[{}]\n", .{name});
+            std.debug.print("[{s}]\n", .{name});
         }
     }
 
@@ -45,13 +45,13 @@ fn start() !void {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
         const ua = try request.headers.get(&arena.allocator, "user-agent");
-        std.debug.print("UA: [{}]\n", .{ua});
+        std.debug.print("UA: [{s}]\n", .{ua});
     }
 
     {
         var method_buf: [16]u8 = undefined;
         const method = try request.getMethod(&method_buf);
-        std.debug.print("[{}]\n", .{method});
+        std.debug.print("[{s}]\n", .{method});
         _ = try request.isPost();
     }
 
@@ -62,7 +62,7 @@ fn start() !void {
         try query.setCachingPolicy(.{ .no_cache = true });
         var response = try query.send("google.com");
         const body = try response.body.readAll(&arena.allocator);
-        std.debug.print("{}\n", .{body});
+        std.debug.print("{s}\n", .{body});
     }
 
     {
