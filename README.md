@@ -238,7 +238,3 @@ fastly compute deploy
 ```
 
 In order to deploy new versions, bump the version number in `fastly.toml` and just type `fastly compute deploy` again.
-
-...
-
-** Documentation in progress! **
