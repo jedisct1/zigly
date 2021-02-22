@@ -55,15 +55,19 @@ The program can be compiled with (replace `example.zig` with the source file nam
 zig build-exe -target wasm32-wasi example.zig
 ```
 
-or, if you are using a build file, by defining the target as
+Happy with the result? Add `-O ReleaseSmall` or `-O ReleaseFast` to get very small or very fast module:
+
+```sh
+zig build-exe -target wasm32-wasi -O ReleaseSmall example.zig
+```
+
+If you are using a build file instead, define the target as `wasm32-wasi` in the `build.zig` file:
 
 ```zig
 const target = try std.zig.CrossTarget.parse(.{ .arch_os_abi = "wasm32-wasi" });
 ```
 
-in the `build.zig` file to compile to WebAssembly by default.
-
-Once testing has been done, compile with `-Drelease-small` or `-Drelease-fast` to get small, optimized modules.
+...and build with `zig build -Drelease-small` or `-Drelease-fast` to get optimized modules.
 
 ### Testing Compute@Edge modules
 
