@@ -61,6 +61,8 @@ Happy with the result? Add `-O ReleaseSmall` or `-O ReleaseFast` to get very sma
 zig build-exe -target wasm32-wasi -O ReleaseSmall example.zig
 ```
 
+The example above should not compile to more than 411 bytes.
+
 If you are using a build file instead, define the target as `wasm32-wasi` in the `build.zig` file:
 
 ```zig
@@ -117,7 +119,7 @@ Applications can read the body of an incoming requests as well as other informat
 ```zig
 const request = downstream.request;
 const user_agent = try request.headers.get(&allocator, "user-agent");
-if (request.is_post()) {
+if (request.isPost()) {
     // method is POST, read the body until the end
     const body = try request.body.readAll(&allocator);   
 }
