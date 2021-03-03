@@ -9,25 +9,9 @@ The easiest way to write Compute@Edge services.
 
 The service runs anything that can be compiled to WebAssembly, and exports a convenient set of functions to interact with the platform.
 
-## What is Zig?
-
-[Zig](https://ziglang.org) is general-purpose programming language and toolchain for maintaining robust, optimal, and reusable software.
-
-Zig:
-
-- is fun and simple to learn
-- compiles very quickly, providing a great developer experience
-- can compile and use existing C and C++ code at no cost
-- is way safer than C and C++ by design, while retaining excellent performance
-- prints nice and useful error traces, on all platforms, including WebAssembly
-- comes with a rich standard library, avoiding the need for many external dependencies
-- has excellent support for WebAssembly
-- creates highly optimized, standalone executables and WebAssembly modules
-- can now be used on Compute@Edge!
-
 ## What is Zigly?
 
-Zigly is a library that makes it easy to write Compute@Edge modules in Zig.
+Zigly is a library that makes it easy to write Compute@Edge modules in [Zig](https://ziglang.org).
 
 Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
