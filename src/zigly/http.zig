@@ -138,7 +138,7 @@ const IncomingBody = struct {
     }
 
     /// Read all the body content. This requires an allocator.
-    pub fn readAll(self: *IncomingBody, allocator: *Allocator) ![]u8 {
+    pub fn readAll(self: *IncomingBody, allocator: *Allocator, max_length: usize) ![]u8 {
         const chunk_size: usize = 4096;
         var buf_len = chunk_size;
         var pos: usize = 0;
@@ -149,6 +149,9 @@ const IncomingBody = struct {
                 return buf[0..pos];
             }
             pos += chunk.len;
+            if (max_length > 0 and pos >= max_length) {
+                return buf[0..max_length];
+            }
             if (buf_len - pos <= chunk_size) {
                 buf_len += chunk_size;
                 buf = try allocator.realloc(buf, buf_len);

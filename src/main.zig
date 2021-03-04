@@ -21,7 +21,7 @@ fn start() !void {
     {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
-        const body = try request.body.readAll(&arena.allocator);
+        const body = try request.body.readAll(&arena.allocator, 0);
         std.debug.print("[{s}]\n", .{body});
     }
 
@@ -61,7 +61,7 @@ fn start() !void {
         var query = try Request.new("GET", "https://google.com");
         try query.setCachingPolicy(.{ .no_cache = true });
         var response = try query.send("google.com");
-        const body = try response.body.readAll(&arena.allocator);
+        const body = try response.body.readAll(&arena.allocator, 0);
         std.debug.print("{s}\n", .{body});
     }
 
