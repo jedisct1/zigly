@@ -139,7 +139,7 @@ const IncomingBody = struct {
 
     /// Read all the body content. This requires an allocator.
     pub fn readAll(self: *IncomingBody, allocator: *Allocator, max_length: usize) ![]u8 {
-        const chunk_size: usize = 4096;
+        const chunk_size: usize = mem.page_size;
         var buf_len = chunk_size;
         var pos: usize = 0;
         var buf = try allocator.alloc(u8, buf_len);
