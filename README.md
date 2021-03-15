@@ -3,7 +3,20 @@
 
 The easiest way to write Compute@Edge services.
 
-<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+  - [What is Compute@Edge?](#what-is-computeedge)
+  - [What is Zigly?](#what-is-zigly)
+  - [Usage](#usage)
+    - [A minimal WebAssembly program](#a-minimal-webassembly-program)
+    - [Testing Compute@Edge modules](#testing-computeedge-modules)
+    - [Using Zigly](#using-zigly)
+      - [Hello world!](#hello-world)
+      - [Inspecting incoming requests](#inspecting-incoming-requests)
+      - [Making HTTP queries](#making-http-queries)
+      - [Cache override](#cache-override)
+      - [Pipes](#pipes)
+      - [Dictionaries](#dictionaries)
+      - [Logging](#logging)
+  - [Deployment to Fastly's platform](#deployment-to-fastlys-platform)
 
 ## What is Compute@Edge?
 
