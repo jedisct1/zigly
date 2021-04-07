@@ -466,7 +466,7 @@ const OutgoingResponse = struct {
 
     /// Send a buffered response and close the stream - Calling this function is required.
     pub fn finish(self: *OutgoingResponse) !void {
-        try fastly(wasm.FastlyHttpResp.send_downstream(self.handle, self.body.handle, 0));
+        try fastly(wasm.FastlyHttpResp.send_downstream(self.handle, self.body.handle, 1));
         try self.body.close();
     }
 
