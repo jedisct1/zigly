@@ -1,13 +1,17 @@
+const std = @import("std");
+const mem = std.mem;
+const Allocator = mem.Allocator;
+
 const wasm = @import("wasm.zig");
 const fastly = @import("errors.zig").fastly;
 
 pub const Dictionary = struct {
-    handle: wasm.handle,
+    handle: wasm.DictionaryHandle,
 
     /// Access a dictionary given its name.
     pub fn open(name: []const u8) !Dictionary {
-        var handle: wasm.handle = undefined;
-        try fastly(wasm.mod_fastly_dictionary.open(name.ptr, name.len, &handle));
+        var handle: wasm.DictionaryHandle = undefined;
+        try fastly(wasm.FastlyDictionary.open(name.ptr, name.len, &handle));
         return Dictionary{ .handle = handle };
     }
 
@@ -17,7 +21,7 @@ pub const Dictionary = struct {
         var value_buf = try allocator.alloc(u8, value_len_max);
         var value_len: usize = undefined;
         while (true) {
-            const ret = wasm.mod_fastly_dictionary.get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, &value_len);
+            const ret = wasm.FastlyDictionary.get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, &value_len);
             if (ret) break else |err| {
                 if (err != FastlyError.FastlyBufferTooSmall) {
                     return err;

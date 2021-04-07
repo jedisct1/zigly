@@ -5,8 +5,10 @@ const std = @import("std");
 const ArenaAllocator = std.heap.ArenaAllocator;
 
 const zigly = @import("zigly.zig");
+const Dictionary = zigly.Dictionary;
 const UserAgent = zigly.UserAgent;
 const Request = zigly.Request;
+const Logger = zigly.Logger;
 
 fn start() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
