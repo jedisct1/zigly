@@ -475,13 +475,6 @@ const OutgoingResponse = struct {
         }
         try fastly(wasm.FastlyHttpResp.send_downstream(if (copy_headers) incoming.handle else self.handle, incoming.body.handle, 0));
     }
-
-    /// Redirect to a different URI, with the given status code (usually 301 or 302)
-    pub fn redirect(self: *OutgoingResponse, status: u16, uri: []const u8) !void {
-        try self.setStatus(status);
-        try self.headers.set("Location", uri);
-        try self.flush();
-    }
 };
 
 const IncomingResponse = struct {
@@ -502,6 +495,14 @@ const Downstream = struct {
     request: Request,
     /// Response to the initial request sent to the proxy.
     response: OutgoingResponse,
+
+    /// Redirect to a different URI, with the given status code (usually 301 or 302)
+    pub fn redirect(self: *Downstream, status: u16, uri: []const u8) !void {
+        var response = self.response;
+        try response.setStatus(status);
+        try response.headers.set("Location", uri);
+        try response.flush();
+    }
 
     /// Proxy the request and its response to the origin, optionally changing the Host header field
     pub fn proxy(self: *Downstream, backend: []const u8, host_header: ?[]const u8) !void {
