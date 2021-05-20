@@ -179,6 +179,26 @@ var downstream = try zigly.downstream();
 try downstream.response.pipe(&upstream_response, true, true);
 ```
 
+### Proxying
+
+Proxying is even easier to use than pipes when a query should be sent unmodified (with the exception of the `Host` header) to the origin:
+
+```zig
+var downstream = try zigly.downstream();
+try downstream.proxy("google", "www.google.com");
+```
+
+The second parameter is optional. If `null`, the original `Host` header will not be modified.
+
+### Redirects
+
+Redirecting the client to another address can be done with a single function call on the downstream object:
+
+```zig
+var downstream = try zigly.downstream();
+try downstream.redirect(302, "https://www.perdu.com");
+```
+
 #### Dictionaries
 
 ```zig
