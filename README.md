@@ -195,8 +195,8 @@ try logger.write("Log entry");
 
 ## Deployment to Fastly's platform
 
-The `fastly` command-line tool only supports Rust and AssemblyScript at the moment.
-However, it can still be used to upload code written in other languages, including Zig.
+The `fastly` command-line tool only supports compilation of Rust and AssemblyScript at the moment.
+However, it can still be used to upload pre-compiled code written in other languages, including Zig.
 
 1. Create a new project:
 
@@ -204,40 +204,18 @@ However, it can still be used to upload code written in other languages, includi
 fastly compute init
 ```
 
-In the following steps, we are going to assume that the project name is `zigmodule`.
-For the language, select `rust` or `assemblyscript`, either will work.
+For the language, select `Other (pre-compiled WASM binary)`.
 
-2. Remove everything except the `fastly.toml` file.
-
-3. Create a directory named `pkg/<your project name>`.
+2. Package the Compute@Edge module, passing in your compiled WebAssembly module.
 
 ```sh
-mkdir -p pkg/zigmodule
+fastly compute pack --path /tmp/z/zig-out/bin/main.wasm
 ```
 
-4. Copy (don't move) `fastly.toml` into this directory:
-
-```sh
-cp fastly.toml pkg/zigmodule/
-```
-
-5. Copy your WebAssembly module into a new `bin` directory inside the previous directory. The WebAssembly module must be named `main.wasm`.
-
-```sh
-mkdir -p pkg/zigmodule/bin
-cp /tmp/z/zig-out/bin/main.wasm pkg/zigmodule/bin/main.wasm
-```
-
-6. Archive the directory:
-
-```sh
-tar czv -C pkg -f pkg/zigmodule.tar.gz zigmodule
-```
-
-7. Deploy!
+3. Deploy!
 
 ```sh
 fastly compute deploy
 ```
 
-In order to deploy new versions, bump the version number in `fastly.toml` and just type `fastly compute deploy` again.
+In order to deploy new versions, repeat steps 2 and 3.
