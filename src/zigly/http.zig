@@ -274,15 +274,6 @@ pub const Request = struct {
         };
     }
 
-    /// Proxy the request and its response to the origin, optionally changing the Host header field
-    pub fn proxy(self: *Request, backend: []const u8, host_header: ?[]const u8) !void {
-        if (host_header) |host| {
-            try self.headers.set("Host", host);
-        }
-        var resp = try OutgoingResponse.downstream();
-        try fastly(wasm.FastlyHttpReq.send(self.headers.handle, self.body.handle, backend.ptr, backend.len, &resp.handle, &resp.body.handle));
-    }
-
     /// Caching policy
     pub const CachingPolicy = struct {
         /// Bypass the cache
@@ -511,6 +502,15 @@ const Downstream = struct {
     request: Request,
     /// Response to the initial request sent to the proxy.
     response: OutgoingResponse,
+
+    /// Proxy the request and its response to the origin, optionally changing the Host header field
+    pub fn proxy(self: *Downstream, backend: []const u8, host_header: ?[]const u8) !void {
+        if (host_header) |host| {
+            try self.request.headers.set("Host", host);
+        }
+        try fastly(wasm.FastlyHttpReq.send(self.request.headers.handle, self.request.body.handle, backend.ptr, backend.len, &self.response.handle, &self.response.body.handle));
+        try self.response.flush();
+    }
 };
 
 /// The initial connection to the proxy.
