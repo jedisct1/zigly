@@ -279,13 +279,13 @@ pub const Request = struct {
         if (host_header) |host| {
             try self.headers.set("Host", host);
         }
-        var resp = downstream().response;
+        var resp = try OutgoingResponse.downstream();
         try fastly(wasm.FastlyHttpReq.send(self.headers.handle, self.body.handle, backend.ptr, backend.len, &resp.handle, &resp.body.handle));
     }
 
     /// Redirect to a different URI, with the given status code (usually 301 or 302)
     pub fn redirect(self: *Request, status: u16, uri: []const u8) !void {
-        var resp = downstream().response;
+        var resp = try OutgoingResponse.downstream();
         try resp.setStatus(status);
         try resp.headers.set("Location", uri);
     }
