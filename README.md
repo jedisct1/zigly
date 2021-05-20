@@ -131,7 +131,7 @@ As usual in Zig, memory allocations are never hidden, and applications can choos
 Making HTTP queries is easy:
 
 ```zig
-var query = try Request.new("GET", "https://example.com");
+var query = try zigly.Request.new("GET", "https://example.com");
 var response = try query.send("backend");
 const body = try response.body.readAll(&allocator, 0);
 ```
@@ -173,23 +173,23 @@ Attributes include:
 With `pipe()`, the response sent to a client can be a direct copy of another response. The application will then act as a proxy, optionally also copying the original status and headers.
 
 ```zig
-var query = try Request.new("GET", "https://google.com");
+var query = try zigly.Request.new("GET", "https://google.com");
 var upstream_response = try query.send("google.com");
-var downstream = try zigly.downstream()
+var downstream = try zigly.downstream();
 try downstream.response.pipe(&upstream_response, true, true);
 ```
 
 #### Dictionaries
 
 ```zig
-const dict = try Dictionary.open("name");
+const dict = try zigly.Dictionary.open("name");
 const value = try dict.get(&allocator, "key");
 ```
 
 #### Logging
 
 ```zig
-const logger = try Logger.open("endpoint);
+const logger = try zigly.Logger.open("endpoint);
 try logger.write("Log entry");
 ```
 
