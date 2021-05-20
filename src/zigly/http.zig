@@ -283,13 +283,6 @@ pub const Request = struct {
         try fastly(wasm.FastlyHttpReq.send(self.headers.handle, self.body.handle, backend.ptr, backend.len, &resp.handle, &resp.body.handle));
     }
 
-    /// Redirect to a different URI, with the given status code (usually 301 or 302)
-    pub fn redirect(self: *Request, status: u16, uri: []const u8) !void {
-        var resp = try OutgoingResponse.downstream();
-        try resp.setStatus(status);
-        try resp.headers.set("Location", uri);
-    }
-
     /// Caching policy
     pub const CachingPolicy = struct {
         /// Bypass the cache
@@ -490,6 +483,13 @@ const OutgoingResponse = struct {
             try self.setStatus(try incoming.getStatus());
         }
         try fastly(wasm.FastlyHttpResp.send_downstream(if (copy_headers) incoming.handle else self.handle, incoming.body.handle, 0));
+    }
+
+    /// Redirect to a different URI, with the given status code (usually 301 or 302)
+    pub fn redirect(self: *OutgoingResponse, status: u16, uri: []const u8) !void {
+        try self.setStatus(status);
+        try self.headers.set("Location", uri);
+        try self.flush();
     }
 };
 
