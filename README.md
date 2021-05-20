@@ -111,6 +111,20 @@ logger.write("Operation sucessful!");
 
 Note that calling `finish()` is always required in order to actually send a response to the client.
 
+But realistically, most responses will either be simple redirects:
+
+```zig
+var downstream = try zigly.downstream();
+try downstream.redirect(302, "https://www.perdu.com");
+```
+
+or responding directly from the cache, proxying to the origin if the cached entry is nonexistent or expired:
+
+```zig
+var downstream = try zigly.downstream();
+try downstream.proxy("google", "www.google.com");
+```
+
 #### Inspecting incoming requests
 
 Applications can read the body of an incoming requests as well as other informations such as the headers:
