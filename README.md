@@ -174,7 +174,7 @@ With `pipe()`, the response sent to a client can be a direct copy of another res
 
 ```zig
 var query = try zigly.Request.new("GET", "https://google.com");
-var upstream_response = try query.send("google.com");
+var upstream_response = try query.send("google");
 var downstream = try zigly.downstream();
 try downstream.response.pipe(&upstream_response, true, true);
 ```
