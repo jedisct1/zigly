@@ -1,5 +1,5 @@
 // These are just examples to exercise the bindings
-// Only `zigly.zig` needs to be included in your actual applications.
+// Only `zigly.zig` and the `zigly` directory need to be included in your actual applications.
 
 const std = @import("std");
 const ArenaAllocator = std.heap.ArenaAllocator;
@@ -60,9 +60,9 @@ fn start() !void {
     {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
-        var query = try Request.new("GET", "https://google.com");
+        var query = try Request.new("GET", "https://www.google.com");
         try query.setCachingPolicy(.{ .no_cache = true });
-        var response = try query.send("google.com");
+        var response = try query.send("google");
         const body = try response.body.readAll(&arena.allocator, 0);
         std.debug.print("{s}\n", .{body});
     }
@@ -82,8 +82,8 @@ fn start() !void {
     {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
-        var query = try Request.new("GET", "https://google.com");
-        var upstream_response = try query.send("google.com");
+        var query = try Request.new("GET", "https://www.google.com");
+        var upstream_response = try query.send("google");
         try downstream.response.pipe(&upstream_response, false, false);
     }
 }
