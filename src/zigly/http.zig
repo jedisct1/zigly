@@ -7,6 +7,7 @@ const wasm = @import("wasm.zig");
 const errors = @import("errors.zig");
 const fastly = errors.fastly;
 const FastlyError = errors.FastlyError;
+const Uri = @import("zuri/zuri.zig").Uri;
 
 const RequestHeaders = struct {
     handle: wasm.RequestHandle,
