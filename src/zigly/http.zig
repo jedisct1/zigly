@@ -236,6 +236,9 @@ pub const Request = struct {
     }
 
     /// Get the request URI.
+    /// `uri` is a buffer that should be large enough to store the URI.
+    /// The function returns the slice containing the actual string.
+    /// Individual components can be extracted with `Uri.parse()`.
     pub fn getUriString(self: Request, uri: []u8) ![]u8 {
         var uri_len: usize = undefined;
         try fastly(wasm.FastlyHttpReq.uri_get(self.headers.handle, uri.ptr, uri.len, &uri_len));
