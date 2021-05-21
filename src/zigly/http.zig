@@ -235,14 +235,14 @@ pub const Request = struct {
     }
 
     /// Get the request URI.
-    pub fn getUri(self: Request, uri: []u8) ![]u8 {
+    pub fn getUriString(self: Request, uri: []u8) ![]u8 {
         var uri_len: usize = undefined;
         try fastly(wasm.FastlyHttpReq.uri_get(self.headers.handle, uri.ptr, uri.len, &uri_len));
         return uri[0..uri_len];
     }
 
     /// Set the request URI.
-    pub fn setUri(self: Request, uri: []const u8) !void {
+    pub fn setUriString(self: Request, uri: []const u8) !void {
         try fastly(wasm.FastlyHttpReq.uri_set(self.headers.handle, uri.ptr, uri.len));
     }
 
@@ -258,7 +258,7 @@ pub const Request = struct {
             .body = IncomingBody{ .handle = body_handle },
         };
         try request.setMethod(method);
-        try request.setUri(uri);
+        try request.setUriString(uri);
         return request;
     }
 
