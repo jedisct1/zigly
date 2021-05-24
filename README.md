@@ -1,7 +1,7 @@
 ![Zigly](logo.png)
 ========
 
-The easiest way to write Compute@Edge services.
+The easiest way to write Compute@Edge services in Zig.
 
   - [What is Compute@Edge?](#what-is-computeedge)
   - [What is Zigly?](#what-is-zigly)
