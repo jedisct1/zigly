@@ -127,19 +127,19 @@ const RequestHeaders = struct {
     }
 };
 
-const IncomingBody = struct {
+const Body = struct {
     handle: wasm.BodyHandle,
 
     /// Possibly partial read of the body content.
     /// An empty slice is returned when no data has to be read any more.
-    pub fn read(self: *IncomingBody, buf: []u8) ![]u8 {
+    pub fn read(self: *Body, buf: []u8) ![]u8 {
         var buf_len: usize = undefined;
         try fastly(wasm.FastlyHttpBody.read(self.handle, buf.ptr, buf.len, &buf_len));
         return buf[0..buf_len];
     }
 
     /// Read all the body content. This requires an allocator.
-    pub fn readAll(self: *IncomingBody, allocator: *Allocator, max_length: usize) ![]u8 {
+    pub fn readAll(self: *Body, allocator: *Allocator, max_length: usize) ![]u8 {
         const chunk_size: usize = mem.page_size;
         var buf_len = chunk_size;
         var pos: usize = 0;
@@ -160,24 +160,15 @@ const IncomingBody = struct {
         }
     }
 
-    /// Close the body reader.
-    pub fn close(self: *IncomingBody) !void {
-        try fastly(wasm.FastlyHttpBody.close(self.handle));
-    }
-};
-
-const OutgoingBody = struct {
-    handle: wasm.BodyHandle,
-
     /// Add body content. The number of bytes that could be written is returned.
-    pub fn write(self: *OutgoingBody, buf: []const u8) !usize {
+    pub fn write(self: *Body, buf: []const u8) !usize {
         var written: usize = undefined;
         try fastly(wasm.FastlyHttpBody.write(self.handle, buf.ptr, buf.len, wasm.BodyWriteEnd.BACK, &written));
         return written;
     }
 
     /// Add body content. The entire buffer is written.
-    pub fn writeAll(self: *OutgoingBody, buf: []const u8) !void {
+    pub fn writeAll(self: *Body, buf: []const u8) !void {
         var pos: usize = 0;
         while (pos < buf.len) {
             const written = try self.write(buf[pos..]);
@@ -185,8 +176,8 @@ const OutgoingBody = struct {
         }
     }
 
-    /// Close the body writer.
-    pub fn close(self: *OutgoingBody) !void {
+    /// Close the body.
+    pub fn close(self: *Body) !void {
         try fastly(wasm.FastlyHttpBody.close(self.handle));
     }
 };
@@ -196,7 +187,7 @@ pub const Request = struct {
     /// The request headers.
     headers: RequestHeaders,
     /// The request body.
-    body: IncomingBody,
+    body: Body,
 
     /// Return the initial request made to the proxy.
     pub fn downstream() !Request {
@@ -205,7 +196,7 @@ pub const Request = struct {
         try fastly(wasm.FastlyHttpReq.body_downstream_get(&req_handle, &body_handle));
         return Request{
             .headers = RequestHeaders{ .handle = req_handle },
-            .body = IncomingBody{ .handle = body_handle },
+            .body = Body{ .handle = body_handle },
         };
     }
 
@@ -259,7 +250,7 @@ pub const Request = struct {
 
         var request = Request{
             .headers = RequestHeaders{ .handle = req_handle },
-            .body = IncomingBody{ .handle = body_handle },
+            .body = Body{ .handle = body_handle },
         };
         try request.setMethod(method);
         try request.setUriString(uri);
@@ -274,7 +265,7 @@ pub const Request = struct {
         return IncomingResponse{
             .handle = resp_handle,
             .headers = ResponseHeaders{ .handle = resp_handle },
-            .body = IncomingBody{ .handle = resp_body_handle },
+            .body = Body{ .handle = resp_body_handle },
         };
     }
 
@@ -432,7 +423,7 @@ const ResponseHeaders = struct {
 const OutgoingResponse = struct {
     handle: wasm.ResponseHandle,
     headers: ResponseHeaders,
-    body: OutgoingBody,
+    body: Body,
 
     /// The response to the initial query sent to the proxy.
     pub fn downstream() !OutgoingResponse {
@@ -443,7 +434,7 @@ const OutgoingResponse = struct {
         return OutgoingResponse{
             .handle = resp_handle,
             .headers = ResponseHeaders{ .handle = resp_handle },
-            .body = OutgoingBody{ .handle = body_handle },
+            .body = Body{ .handle = body_handle },
         };
     }
 
@@ -484,7 +475,7 @@ const OutgoingResponse = struct {
 const IncomingResponse = struct {
     handle: wasm.ResponseHandle,
     headers: ResponseHeaders,
-    body: IncomingBody,
+    body: Body,
 
     /// Get the status code of a response.
     pub fn getStatus(self: IncomingResponse) !u16 {
