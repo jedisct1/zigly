@@ -23,7 +23,6 @@ pub const Uri = struct {
 
     /// possible uri host values
     pub const Host = union(enum) {
-        ip: net.Address,
         name: []const u8,
     };
 
@@ -249,16 +248,6 @@ pub const Uri = struct {
             try uri.parseAuth(input[uri.len..]);
         }
 
-        // make host ip4 address if possible
-        if (uri.host == .name and uri.host.name.len > 0) blk: {
-            var a = net.Address.parseIp4(uri.host.name, 0) catch break :blk;
-            uri.host = .{ .ip = a }; // workaround for https://github.com/ziglang/zig/issues/3234
-        }
-
-        if (uri.host == .ip and uri.port != null) {
-            uri.host.ip.setPort(uri.port.?);
-        }
-
         uri.parsePath(input[uri.len..]);
 
         if (input.len > uri.len + 1 and input[uri.len] == '?') {
@@ -323,15 +312,7 @@ pub const Uri = struct {
     }
 
     fn parseIP6(u: *Uri, input: []const u8) Error!void {
-        const end = mem.indexOfScalar(u8, input, ']') orelse return error.InvalidCharacter;
-        const addr = net.Address.parseIp6(input[1..end], 0) catch return error.InvalidCharacter;
-        u.host = .{ .ip = addr };
-        u.len += end + 1;
-
-        if (input.len > end + 2 and input[end + 1] == ':') {
-            u.len += 1;
-            try u.parsePort(input[end + 2 ..]);
-        }
+        return error.InvalidCharacter;
     }
 
     fn parsePort(u: *Uri, input: []const u8) Error!void {
