@@ -30,6 +30,8 @@ Zigly is a library that makes it easy to write Compute@Edge modules in [Zig](htt
 
 Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
+Zigly is written for Zig 0.8.x.
+
 ## Usage
 
 ### A minimal WebAssembly program
