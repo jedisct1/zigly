@@ -145,6 +145,17 @@ pub const FastlyDictionary = struct {
     ) callconv(.C) FastlyStatus;
 };
 
+/// ---------------------- Module: [fastly_geo] ----------------------
+pub const FastlyGeo = struct {
+    pub extern "fastly_geo" fn lookup(
+        addr_octets: WasiMutPtr(Char8),
+        addr_len: usize,
+        buf: WasiMutPtr(Char8),
+        buf_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+};
+
 /// ---------------------- Module: [fastly_http_body] ----------------------
 pub const FastlyHttpBody = struct {
     pub extern "fastly_http_body" fn append(
