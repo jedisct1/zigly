@@ -56,7 +56,9 @@ pub fn WasiMutSlice(comptime T) type {
     };
 }
 
-/// ---------------------- Module: [typenames] ----------------------
+// ---------------------- Module: [typenames] ----------------------
+
+/// Status codes returned from hostcalls.
 pub const FastlyStatus = extern enum(u32) {
     OK = 0,
     ERROR = 1,
@@ -73,6 +75,7 @@ pub const FastlyStatus = extern enum(u32) {
     HTTPINVALIDSTATUS = 12,
 };
 
+/// A tag indicating HTTP protocol versions.
 pub const HttpVersion = extern enum(u32) {
     HTTP_09 = 0,
     HTTP_10 = 1,
@@ -81,6 +84,7 @@ pub const HttpVersion = extern enum(u32) {
     H_3 = 4,
 };
 
+/// HTTP status codes.
 pub const HttpStatus = u16;
 
 pub const BodyWriteEnd = extern enum(u32) {
@@ -88,22 +92,31 @@ pub const BodyWriteEnd = extern enum(u32) {
     FRONT = 1,
 };
 
+/// A handle to an HTTP request or response body.
 pub const BodyHandle = WasiHandle;
 
+/// A handle to an HTTP request.
 pub const RequestHandle = WasiHandle;
 
+/// A handle to an HTTP response.
 pub const ResponseHandle = WasiHandle;
 
+/// A handle to a currently-pending asynchronous HTTP request.
 pub const PendingRequestHandle = WasiHandle;
 
+/// A handle to a logging endpoint.
 pub const EndpointHandle = WasiHandle;
 
+/// A handle to an Edge Dictionary.
 pub const DictionaryHandle = WasiHandle;
 
+/// A "multi-value" cursor.
 pub const MultiValueCursor = u32;
 
+/// -1 represents "finished", non-negative represents a $multi_value_cursor:
 pub const MultiValueCursorResult = i64;
 
+/// An override for response caching behavior.
 pub const CacheOverrideTag = u32;
 pub const CACHE_OVERRIDE_TAG_NONE: CacheOverrideTag = 0x1;
 pub const CACHE_OVERRIDE_TAG_PASS: CacheOverrideTag = 0x2;
@@ -119,14 +132,16 @@ pub const IsDone = u32;
 
 pub const DoneIdx = u32;
 
-/// ---------------------- Module: [fastly_abi] ----------------------
+// ---------------------- Module: [fastly_abi] ----------------------
+
 pub const FastlyAbi = struct {
     pub extern "fastly_abi" fn init(
         abi_version: u64,
     ) callconv(.C) FastlyStatus;
 };
 
-/// ---------------------- Module: [fastly_dictionary] ----------------------
+// ---------------------- Module: [fastly_dictionary] ----------------------
+
 pub const FastlyDictionary = struct {
     pub extern "fastly_dictionary" fn open(
         name_ptr: WasiPtr(Char8),
@@ -144,7 +159,8 @@ pub const FastlyDictionary = struct {
     ) callconv(.C) FastlyStatus;
 };
 
-/// ---------------------- Module: [fastly_geo] ----------------------
+// ---------------------- Module: [fastly_geo] ----------------------
+
 pub const FastlyGeo = struct {
     pub extern "fastly_geo" fn lookup(
         addr_octets: WasiPtr(Char8),
@@ -155,7 +171,8 @@ pub const FastlyGeo = struct {
     ) callconv(.C) FastlyStatus;
 };
 
-/// ---------------------- Module: [fastly_http_body] ----------------------
+// ---------------------- Module: [fastly_http_body] ----------------------
+
 pub const FastlyHttpBody = struct {
     pub extern "fastly_http_body" fn append(
         dest: BodyHandle,
@@ -186,7 +203,8 @@ pub const FastlyHttpBody = struct {
     ) callconv(.C) FastlyStatus;
 };
 
-/// ---------------------- Module: [fastly_http_req] ----------------------
+// ---------------------- Module: [fastly_http_req] ----------------------
+
 pub const FastlyHttpReq = struct {
     pub extern "fastly_http_req" fn body_downstream_get(
         result_0_ptr: WasiMutPtr(RequestHandle),
@@ -390,7 +408,8 @@ pub const FastlyHttpReq = struct {
     ) callconv(.C) FastlyStatus;
 };
 
-/// ---------------------- Module: [fastly_http_resp] ----------------------
+// ---------------------- Module: [fastly_http_resp] ----------------------
+
 pub const FastlyHttpResp = struct {
     pub extern "fastly_http_resp" fn new(
         result_ptr: WasiMutPtr(ResponseHandle),
@@ -482,7 +501,8 @@ pub const FastlyHttpResp = struct {
     ) callconv(.C) FastlyStatus;
 };
 
-/// ---------------------- Module: [fastly_log] ----------------------
+// ---------------------- Module: [fastly_log] ----------------------
+
 pub const FastlyLog = struct {
     pub extern "fastly_log" fn endpoint_get(
         name_ptr: WasiPtr(u8),
@@ -498,7 +518,8 @@ pub const FastlyLog = struct {
     ) callconv(.C) FastlyStatus;
 };
 
-/// ---------------------- Module: [fastly_uap] ----------------------
+// ---------------------- Module: [fastly_uap] ----------------------
+
 pub const FastlyUap = struct {
     pub extern "fastly_uap" fn parse(
         user_agent_ptr: WasiPtr(Char8),
