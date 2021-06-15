@@ -69,6 +69,8 @@ pub const FastlyStatus = extern enum(u32) {
     HTTPUSER = 8,
     HTTPINCOMPLETE = 9,
     NONE = 10,
+    HTTPHEADTOOLARGE = 11,
+    HTTPINVALIDSTATUS = 12,
 };
 
 pub const HttpVersion = extern enum(u32) {
@@ -100,7 +102,6 @@ pub const DictionaryHandle = WasiHandle;
 
 pub const MultiValueCursor = u32;
 
-/// -1 represents "finished", non-negative represents a $multi_value_cursor:
 pub const MultiValueCursorResult = i64;
 
 pub const CacheOverrideTag = u32;
@@ -117,8 +118,6 @@ pub const HeaderCount = u32;
 pub const IsDone = u32;
 
 pub const DoneIdx = u32;
-
-pub const Typenames = struct {};
 
 /// ---------------------- Module: [fastly_abi] ----------------------
 pub const FastlyAbi = struct {
@@ -148,7 +147,7 @@ pub const FastlyDictionary = struct {
 /// ---------------------- Module: [fastly_geo] ----------------------
 pub const FastlyGeo = struct {
     pub extern "fastly_geo" fn lookup(
-        addr_octets: WasiMutPtr(Char8),
+        addr_octets: WasiPtr(Char8),
         addr_len: usize,
         buf: WasiMutPtr(Char8),
         buf_len: usize,

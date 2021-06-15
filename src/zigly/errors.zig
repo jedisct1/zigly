@@ -11,6 +11,8 @@ pub const FastlyError = error{
     FastlyHttpUserError,
     FastlyHttpIncomplete,
     FastlyNone,
+    FastlyHttpHeaderTooLarge,
+    FastlyHttpInvalidStatus,
 };
 
 pub fn fastly(fastly_status: wasm.FastlyStatus) FastlyError!void {
@@ -26,5 +28,7 @@ pub fn fastly(fastly_status: wasm.FastlyStatus) FastlyError!void {
         wasm.FastlyStatus.HTTPUSER => return FastlyError.FastlyHttpUserError,
         wasm.FastlyStatus.HTTPINCOMPLETE => return FastlyError.FastlyHttpIncomplete,
         wasm.FastlyStatus.NONE => return FastlyError.FastlyNone,
+        wasm.FastlyStatus.HTTPHEADTOOLARGE => return FastlyError.FastlyHttpHeaderTooLarge,
+        wasm.FastlyStatus.HTTPINVALIDSTATUS => return FastlyError.FastlyHttpInvalidStatus,
     }
 }
