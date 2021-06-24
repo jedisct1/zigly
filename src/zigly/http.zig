@@ -289,7 +289,7 @@ pub const Request = struct {
         if (policy.no_cache) {
             wasm_policy |= wasm.CACHE_OVERRIDE_TAG_PASS;
         }
-        if (policy.ttl) |ttl| {
+        if (policy.ttl) |_| {
             wasm_policy |= wasm.CACHE_OVERRIDE_TAG_TTL;
         }
         if (policy.serve_stale) |_| {

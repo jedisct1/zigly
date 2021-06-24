@@ -26,7 +26,7 @@ pub const WasiString = extern struct {
     }
 };
 
-pub fn WasiSlice(comptime T) type {
+pub fn WasiSlice(comptime T: type) type {
     return extern struct {
         ptr: WasiPtr(T),
         len: usize,
@@ -41,7 +41,7 @@ pub fn WasiSlice(comptime T) type {
     };
 }
 
-pub fn WasiMutSlice(comptime T) type {
+pub fn WasiMutSlice(comptime T: type) type {
     return extern struct {
         ptr: WasiMutPtr(T),
         len: usize,
@@ -59,7 +59,7 @@ pub fn WasiMutSlice(comptime T) type {
 // ---------------------- Module: [typenames] ----------------------
 
 /// Status codes returned from hostcalls.
-pub const FastlyStatus = extern enum(u32) {
+pub const FastlyStatus = enum(u32) {
     OK = 0,
     ERROR = 1,
     INVAL = 2,
@@ -76,7 +76,7 @@ pub const FastlyStatus = extern enum(u32) {
 };
 
 /// A tag indicating HTTP protocol versions.
-pub const HttpVersion = extern enum(u32) {
+pub const HttpVersion = enum(u32) {
     HTTP_09 = 0,
     HTTP_10 = 1,
     HTTP_11 = 2,
@@ -87,7 +87,7 @@ pub const HttpVersion = extern enum(u32) {
 /// HTTP status codes.
 pub const HttpStatus = u16;
 
-pub const BodyWriteEnd = extern enum(u32) {
+pub const BodyWriteEnd = enum(u32) {
     BACK = 0,
     FRONT = 1,
 };

@@ -5,7 +5,7 @@ const Allocator = mem.Allocator;
 const wasm = @import("wasm.zig");
 const fastly = @import("errors.zig").fastly;
 
-pub const Ip = enum {
+pub const Ip = enum(u1) {
     ip4 = [4]u8,
     ip16 = [16]u8,
 };

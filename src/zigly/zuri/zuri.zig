@@ -312,6 +312,8 @@ pub const Uri = struct {
     }
 
     fn parseIP6(u: *Uri, input: []const u8) Error!void {
+        _ = u;
+        _ = input;
         return error.InvalidCharacter;
     }
 
