@@ -74,7 +74,7 @@ const target = try std.zig.CrossTarget.parse(.{ .arch_os_abi = "wasm32-wasi" });
 
 ### Testing Compute@Edge modules
 
-The easiest way to test the resulting modules is currently to use [Fastlike](https://github.com/avidal/fastlike), a partial reimplementation of the Fastly API that runs locally, on any operating system supported by the Go language.
+The easiest way to test the resulting modules is to use [Viceroy](https://github.com/fastly/Viceroy), a reimplementation of the Fastly API that runs locally.
 
 ### Using Zigly
 
