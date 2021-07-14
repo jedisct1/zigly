@@ -406,6 +406,10 @@ pub const FastlyHttpReq = struct {
         result_1_ptr: WasiMutPtr(ResponseHandle),
         result_2_ptr: WasiMutPtr(BodyHandle),
     ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn close(
+        h: RequestHandle,
+    ) callconv(.C) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_http_resp] ----------------------
@@ -498,6 +502,10 @@ pub const FastlyHttpResp = struct {
     pub extern "fastly_http_resp" fn status_set(
         h: ResponseHandle,
         status: HttpStatus,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_resp" fn close(
+        h: ResponseHandle,
     ) callconv(.C) FastlyStatus;
 };
 
