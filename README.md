@@ -248,7 +248,13 @@ For the language, select `Other (pre-compiled WASM binary)`.
 fastly compute pack --path /tmp/z/zig-out/bin/main.wasm
 ```
 
-3. Deploy!
+3. Test locally
+
+```sh
+fastly compute serve --skip-build --file /tmp/z/zig-out/bin/main.wasm
+```
+
+4. Deploy!
 
 ```sh
 fastly compute deploy
