@@ -300,6 +300,11 @@ pub const Request = struct {
         }
         try fastly(wasm.FastlyHttpReq.cache_override_v2_set(self.headers.handle, wasm_policy, policy.ttl orelse 0, policy.serve_stale orelse 0, policy.surrogate_key.ptr, policy.surrogate_key.len));
     }
+
+    /// Close the request.
+    pub fn close(self: *Request) !void {
+        try fastly(wasm.FastlyHttpReq.close(self.handle));
+    }
 };
 
 const ResponseHeaders = struct {
@@ -447,6 +452,7 @@ const OutgoingResponse = struct {
     pub fn finish(self: *OutgoingResponse) !void {
         try fastly(wasm.FastlyHttpResp.send_downstream(self.handle, self.body.handle, 1));
         try self.body.close();
+        try fastly(wasm.FastlyHttpResp.close(self.handle));
     }
 
     /// Get a the status code of a response.
@@ -470,6 +476,11 @@ const OutgoingResponse = struct {
         }
         try fastly(wasm.FastlyHttpResp.send_downstream(if (copy_headers) incoming.handle else self.handle, incoming.body.handle, 0));
     }
+
+    /// Prematurely close the response without sending potentially buffered data.
+    pub fn cancel(self: *Request) !void {
+        try fastly(wasm.FastlyHttpResp.close(self.handle));
+    }
 };
 
 const IncomingResponse = struct {
@@ -482,6 +493,11 @@ const IncomingResponse = struct {
         var status: wasm.HttpStatus = undefined;
         try fastly(wasm.FastlyHttpResp.status_get(self.handle, &status));
         return @intCast(u16, status);
+    }
+
+    /// Close the response after use.
+    pub fn close(self: *Request) !void {
+        try fastly(wasm.FastlyHttpResp.close(self.handle));
     }
 };
 
