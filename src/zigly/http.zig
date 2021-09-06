@@ -63,7 +63,7 @@ const RequestHeaders = struct {
                     return err;
                 }
                 value_len_max *= 2;
-                value_buf = try allocator.realloc(name_buf, value_len_max);
+                value_buf = try allocator.realloc(value_buf, value_len_max);
             }
         }
         return value_buf[0..value_len];
@@ -361,7 +361,7 @@ const ResponseHeaders = struct {
                     return err;
                 }
                 value_len_max *= 2;
-                value_buf = try allocator.realloc(name_buf, value_len_max);
+                value_buf = try allocator.realloc(value_buf, value_len_max);
             }
         }
         return value_buf[0..value_len];

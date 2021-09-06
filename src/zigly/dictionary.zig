@@ -4,6 +4,8 @@ const Allocator = mem.Allocator;
 
 const wasm = @import("wasm.zig");
 const fastly = @import("errors.zig").fastly;
+const errors = fastly.errors;
+const FastlyError = errors.FastlyError;
 
 pub const Dictionary = struct {
     handle: wasm.DictionaryHandle,
@@ -27,7 +29,7 @@ pub const Dictionary = struct {
                     return err;
                 }
                 value_len_max *= 2;
-                value_buf = try allocator.realloc(name_buf, value_len_max);
+                value_buf = try allocator.realloc(value_buf, value_len_max);
             }
         }
         return value_buf[0..value_len];
