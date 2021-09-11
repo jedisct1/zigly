@@ -452,7 +452,6 @@ const OutgoingResponse = struct {
     pub fn finish(self: *OutgoingResponse) !void {
         try fastly(wasm.FastlyHttpResp.send_downstream(self.handle, self.body.handle, 1));
         try self.body.close();
-        try fastly(wasm.FastlyHttpResp.close(self.handle));
     }
 
     /// Get a the status code of a response.
