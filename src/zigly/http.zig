@@ -301,9 +301,9 @@ pub const Request = struct {
         try fastly(wasm.FastlyHttpReq.cache_override_v2_set(self.headers.handle, wasm_policy, policy.ttl orelse 0, policy.serve_stale orelse 0, policy.surrogate_key.ptr, policy.surrogate_key.len));
     }
 
-    /// Close the request.
+    /// Close the request prematurely.
     pub fn close(self: *Request) !void {
-        try fastly(wasm.FastlyHttpReq.close(self.body.handle));
+        try fastly(wasm.FastlyHttpReq.close(self.headers.handle));
     }
 };
 
@@ -495,7 +495,7 @@ const IncomingResponse = struct {
     }
 
     /// Close the response after use.
-    pub fn close(self: *Request) !void {
+    pub fn close(self: *IncomingResponse) !void {
         try fastly(wasm.FastlyHttpResp.close(self.handle));
     }
 };
