@@ -303,7 +303,7 @@ pub const Request = struct {
 
     /// Close the request.
     pub fn close(self: *Request) !void {
-        try fastly(wasm.FastlyHttpReq.close(self.handle));
+        try fastly(wasm.FastlyHttpReq.close(self.body.handle));
     }
 };
 
