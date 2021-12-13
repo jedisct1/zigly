@@ -132,7 +132,8 @@ pub const IsDone = u32;
 
 pub const DoneIdx = u32;
 
-// ---------------------- Module: [fastly_abi] ----------------------
+pub const ContentEncodings = u32;
+pub const CONTENT_ENCODINGS_GZIP: ContentEncodings = 1;
 
 pub const FastlyAbi = struct {
     pub extern "fastly_abi" fn init(
@@ -409,6 +410,11 @@ pub const FastlyHttpReq = struct {
 
     pub extern "fastly_http_req" fn close(
         h: RequestHandle,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn auto_decompress_response_set(
+        h: RequestHandle,
+        encodings: ContentEncodings,
     ) callconv(.C) FastlyStatus;
 };
 
