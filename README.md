@@ -30,7 +30,7 @@ Zigly is a library that makes it easy to write Compute@Edge modules in [Zig](htt
 
 Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
-Zigly is written for Zig 0.8.x.
+Zigly is written for Zig 0.9.x.
 
 ## Usage
 
@@ -133,10 +133,10 @@ Applications can read the body of an incoming requests as well as other informat
 
 ```zig
 const request = downstream.request;
-const user_agent = try request.headers.get(&allocator, "user-agent");
+const user_agent = try request.headers.get(allocator, "user-agent");
 if (request.isPost()) {
     // method is POST, read the body until the end, up to 1000000 bytes
-    const body = try request.body.readAll(&allocator, 1000000);
+    const body = try request.body.readAll(allocator, 1000000);
 }
 ```
 
@@ -149,7 +149,7 @@ Making HTTP queries is easy:
 ```zig
 var query = try zigly.Request.new("GET", "https://example.com");
 var response = try query.send("backend");
-const body = try response.body.readAll(&allocator, 0);
+const body = try response.body.readAll(allocator, 0);
 ```
 
 Arbitrary headers can be added the the outgoing `query`:
@@ -219,7 +219,7 @@ try downstream.redirect(302, "https://www.perdu.com");
 
 ```zig
 const dict = try zigly.Dictionary.open("name");
-const value = try dict.get(&allocator, "key");
+const value = try dict.get(allocator, "key");
 ```
 
 #### Logging

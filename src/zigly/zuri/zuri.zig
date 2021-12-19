@@ -27,7 +27,7 @@ pub const Uri = struct {
     };
 
     /// map query string into a hashmap of key value pairs with no value being an empty string
-    pub fn mapQuery(allocator: *Allocator, query: []const u8) Allocator.Error!ValueMap {
+    pub fn mapQuery(allocator: Allocator, query: []const u8) Allocator.Error!ValueMap {
         if (query.len == 0) {
             return ValueMap.init(allocator);
         }
@@ -64,7 +64,7 @@ pub const Uri = struct {
     };
 
     /// decode path if it is percent encoded
-    pub fn decode(allocator: *Allocator, path: []const u8) EncodeError!?[]u8 {
+    pub fn decode(allocator: Allocator, path: []const u8) EncodeError!?[]u8 {
         var ret: ?[]u8 = null;
         errdefer if (ret) |some| allocator.free(some);
         var ret_index: usize = 0;
@@ -100,7 +100,7 @@ pub const Uri = struct {
     }
 
     /// percent encode if path contains characters not allowed in paths
-    pub fn encode(allocator: *Allocator, path: []const u8) EncodeError!?[]u8 {
+    pub fn encode(allocator: Allocator, path: []const u8) EncodeError!?[]u8 {
         var ret: ?[]u8 = null;
         var ret_index: usize = 0;
         for (path) |c, i| {
@@ -127,7 +127,7 @@ pub const Uri = struct {
 
     /// resolves `path`, leaves trailing '/'
     /// assumes `path` to be valid
-    pub fn resolvePath(allocator: *Allocator, path: []const u8) error{OutOfMemory}![]u8 {
+    pub fn resolvePath(allocator: Allocator, path: []const u8) error{OutOfMemory}![]u8 {
         assert(path.len > 0);
         var list = std.ArrayList([]const u8).init(allocator);
         defer list.deinit();
@@ -555,7 +555,7 @@ test "decode" {
 test "resolvePath" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
-    const alloc = &arena.allocator;
+    const alloc = arena.allocator();
 
     var a = try Uri.resolvePath(alloc, "/a/b/..");
     expectEqualStrings("/a", a);

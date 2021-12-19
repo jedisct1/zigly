@@ -18,7 +18,7 @@ pub const Dictionary = struct {
     }
 
     /// Get the value associated to a key.
-    pub fn get(self: Dictionary, allocator: *Allocator, name: []const u8) ![]const u8 {
+    pub fn get(self: Dictionary, allocator: Allocator, name: []const u8) ![]const u8 {
         var value_len_max: usize = 64;
         var value_buf = try allocator.alloc(u8, value_len_max);
         var value_len: usize = undefined;

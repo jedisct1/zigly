@@ -13,7 +13,7 @@ const RequestHeaders = struct {
     handle: wasm.RequestHandle,
 
     /// Return the full list of header names.
-    pub fn names(self: RequestHeaders, allocator: *Allocator) ![][]const u8 {
+    pub fn names(self: RequestHeaders, allocator: Allocator) ![][]const u8 {
         var names_list = ArrayList([]const u8).init(allocator);
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
@@ -52,7 +52,7 @@ const RequestHeaders = struct {
     }
 
     /// Return the value for a header.
-    pub fn get(self: RequestHeaders, allocator: *Allocator, name: []const u8) ![]const u8 {
+    pub fn get(self: RequestHeaders, allocator: Allocator, name: []const u8) ![]const u8 {
         var value_len_max: usize = 64;
         var value_buf = try allocator.alloc(u8, value_len_max);
         var value_len: usize = undefined;
@@ -70,7 +70,7 @@ const RequestHeaders = struct {
     }
 
     /// Return all the values for a header.
-    pub fn getAll(self: RequestHeaders, allocator: *Allocator, name: []const u8) ![][]const u8 {
+    pub fn getAll(self: RequestHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
         var values_list = ArrayList([]const u8).init(allocator);
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
@@ -114,7 +114,7 @@ const RequestHeaders = struct {
     }
 
     /// Append a value to a header.
-    pub fn append(self: *RequestHeaders, allocator: *Allocator, name: []const u8, value: []const u8) !void {
+    pub fn append(self: *RequestHeaders, allocator: Allocator, name: []const u8, value: []const u8) !void {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
         value0[value.len] = 0;
@@ -139,7 +139,7 @@ const Body = struct {
     }
 
     /// Read all the body content. This requires an allocator.
-    pub fn readAll(self: *Body, allocator: *Allocator, max_length: usize) ![]u8 {
+    pub fn readAll(self: *Body, allocator: Allocator, max_length: usize) ![]u8 {
         const chunk_size: usize = mem.page_size;
         var buf_len = chunk_size;
         var pos: usize = 0;
@@ -311,7 +311,7 @@ const ResponseHeaders = struct {
     handle: wasm.ResponseHandle,
 
     /// Return the full list of header names.
-    pub fn names(self: ResponseHeaders, allocator: *Allocator) ![][]const u8 {
+    pub fn names(self: ResponseHeaders, allocator: Allocator) ![][]const u8 {
         var names_list = ArrayList([]const u8).init(allocator);
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
@@ -350,7 +350,7 @@ const ResponseHeaders = struct {
     }
 
     /// Return the value for a header.
-    pub fn get(self: ResponseHeaders, allocator: *Allocator, name: []const u8) ![]const u8 {
+    pub fn get(self: ResponseHeaders, allocator: Allocator, name: []const u8) ![]const u8 {
         var value_len_max: usize = 64;
         var value_buf = try allocator.alloc(u8, value_len_max);
         var value_len: usize = undefined;
@@ -368,7 +368,7 @@ const ResponseHeaders = struct {
     }
 
     /// Return all the values for a header.
-    pub fn getAll(self: RequestHeaders, allocator: *Allocator, name: []const u8) ![][]const u8 {
+    pub fn getAll(self: RequestHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
         var values_list = ArrayList([]const u8).init(allocator);
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
@@ -412,7 +412,7 @@ const ResponseHeaders = struct {
     }
 
     /// Append a value to a header.
-    pub fn append(self: *ResponseHeaders, allocator: *Allocator, name: []const u8, value: []const u8) !void {
+    pub fn append(self: *ResponseHeaders, allocator: Allocator, name: []const u8, value: []const u8) !void {
         var value0 = try allocator.alloc(u8, value.len + 1);
         mem.copy(u8, value0[0..value.len], value);
         value0[value.len] = 0;
