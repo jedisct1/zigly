@@ -245,13 +245,13 @@ For the language, select `Other (pre-compiled WASM binary)`.
 2. Package the Compute@Edge module, passing in your compiled WebAssembly module.
 
 ```sh
-fastly compute pack --path /tmp/z/zig-out/bin/main.wasm
+fastly compute pack --path zig-out/bin/main.wasm
 ```
 
 3. Test locally
 
 ```sh
-fastly compute serve --skip-build --file /tmp/z/zig-out/bin/main.wasm
+fastly compute serve --skip-build --file zig-out/bin/main.wasm
 ```
 
 4. Deploy!
