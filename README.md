@@ -242,22 +242,31 @@ fastly compute init
 
 For the language, select `Other (pre-compiled WASM binary)`.
 
-2. Package the Compute@Edge module, passing in your compiled WebAssembly module.
+2. Add a build script:
+
+Add the following lines to the fastly.toml file:
+
+```toml
+[scripts]
+build = "zig build -Drelease-small -Dtarget=wasm32-wasi && mkdir -p bin && fastly compute pack --wasm-binary zig-out/bin/*"
+```
+
+3. Package the Compute@Edge module, passing in your compiled WebAssembly module.
 
 ```sh
 fastly compute pack --path zig-out/bin/main.wasm
 ```
 
-3. Test locally
+4. Test locally
 
 ```sh
 fastly compute serve --skip-build --file zig-out/bin/main.wasm
 ```
 
-4. Deploy!
+5. Deploy!
 
 ```sh
 fastly compute deploy
 ```
 
-In order to deploy new versions, repeat steps 2 and 3.
+In order to deploy new versions, repeat steps 3 and 5.
