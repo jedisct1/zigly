@@ -215,6 +215,12 @@ var downstream = try zigly.downstream();
 try downstream.redirect(302, "https://www.perdu.com");
 ```
 
+### Response decompression
+
+By default, responses are left as-is. Which means that if compression (`Content-Encoding`) was accepted by the client, the response can be compressed.
+
+Calling `setAutoDecompressResponse(true)` on a `Request` object configures the Compute@Edge runtime to decompress gzip-encoded responses before streaming them to the application.
+
 #### Dictionaries
 
 ```zig

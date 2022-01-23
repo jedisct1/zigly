@@ -301,6 +301,12 @@ pub const Request = struct {
         try fastly(wasm.FastlyHttpReq.cache_override_v2_set(self.headers.handle, wasm_policy, policy.ttl orelse 0, policy.serve_stale orelse 0, policy.surrogate_key.ptr, policy.surrogate_key.len));
     }
 
+    /// Automatically decompress the body of the request.
+    pub fn setAutoDecompressResponse(self: *Request, enable: bool) !void {
+        const encodings = if (enable) wasm.CONTENT_ENCODINGS_GZIP else 0;
+        try fastly(wasm.FastlyHttpReq.auto_decompress_response_set(self.headers.handle, encodings));
+    }
+
     /// Close the request prematurely.
     pub fn close(self: *Request) !void {
         try fastly(wasm.FastlyHttpReq.close(self.headers.handle));

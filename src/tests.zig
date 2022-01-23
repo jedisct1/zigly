@@ -23,6 +23,7 @@ fn start() !void {
     {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
+        try request.setAutoDecompressResponse(true);
         const body = try request.body.readAll(arena.allocator(), 0);
         std.debug.print("[{s}]\n", .{body});
     }
