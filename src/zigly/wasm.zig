@@ -110,6 +110,9 @@ pub const EndpointHandle = WasiHandle;
 /// A handle to an Edge Dictionary.
 pub const DictionaryHandle = WasiHandle;
 
+/// A handle to a KV Store.
+pub const KvStoreHandle = WasiHandle;
+
 /// A "multi-value" cursor.
 pub const MultiValueCursor = u32;
 
@@ -132,8 +135,12 @@ pub const IsDone = u32;
 
 pub const DoneIdx = u32;
 
+pub const Inserted = u32;
+
 pub const ContentEncodings = u32;
 pub const CONTENT_ENCODINGS_GZIP: ContentEncodings = 1;
+
+// ---------------------- Module: [fastly_abi] ----------------------
 
 pub const FastlyAbi = struct {
     pub extern "fastly_abi" fn init(
@@ -512,6 +519,32 @@ pub const FastlyHttpResp = struct {
 
     pub extern "fastly_http_resp" fn close(
         h: ResponseHandle,
+    ) callconv(.C) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_kv] ----------------------
+
+pub const FastlyKv = struct {
+    pub extern "fastly_kv" fn open(
+        name_ptr: WasiPtr(Char8),
+        name_len: usize,
+        result_ptr: WasiMutPtr(KvStoreHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_kv" fn lookup(
+        store: KvStoreHandle,
+        key_ptr: WasiPtr(u8),
+        key_len: usize,
+        opt_body_handle_out: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_kv" fn insert(
+        store: KvStoreHandle,
+        key_ptr: WasiPtr(u8),
+        key_len: usize,
+        body_handle: BodyHandle,
+        max_age: u32,
+        result_ptr: WasiMutPtr(Inserted),
     ) callconv(.C) FastlyStatus;
 };
 

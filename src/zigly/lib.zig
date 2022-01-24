@@ -12,6 +12,7 @@ const http = @import("http.zig");
 pub const Request = http.Request;
 pub const downstream = http.downstream;
 pub const geo = @import("geo.zig");
+pub const kv = @import("kv.zig");
 
 /// Check that the module is compatible with the current version of the API.
 pub fn compatibilityCheck() !void {
