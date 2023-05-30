@@ -73,6 +73,7 @@ pub const FastlyStatus = enum(u32) {
     NONE = 10,
     HTTPHEADTOOLARGE = 11,
     HTTPINVALIDSTATUS = 12,
+    LIMITEXCEEDED = 13,
 };
 
 /// A tag indicating HTTP protocol versions.
@@ -110,8 +111,30 @@ pub const EndpointHandle = WasiHandle;
 /// A handle to an Edge Dictionary.
 pub const DictionaryHandle = WasiHandle;
 
-/// A handle to a KV Store.
-pub const KvStoreHandle = WasiHandle;
+/// A handle to an Object Store.
+pub const ObjectStoreHandle = WasiHandle;
+
+/// A handle to a pending KV request.
+pub const PendingKvLookupHandle = WasiHandle;
+
+/// A handle to a Secret Store.
+pub const SecretStoreHandle = WasiHandle;
+
+/// A handle to an individual secret.
+pub const SecretHandle = WasiHandle;
+
+/// A handle to an object supporting generic async operations.
+/// Can be either a `body_handle` or a `pending_request_handle`.
+///
+/// Each async item has an associated I/O action:
+///
+/// * Pending requests: awaiting the response headers / `Response` object
+/// * Normal bodies: reading bytes from the body
+/// * Streaming bodies: writing bytes to the body
+///
+/// For writing bytes, note that there is a large host-side buffer that bytes can eagerly be written
+/// into, even before the origin itself consumes that data.
+pub const AsyncItemHandle = WasiHandle;
 
 /// A "multi-value" cursor.
 pub const MultiValueCursor = u32;
@@ -120,12 +143,12 @@ pub const MultiValueCursor = u32;
 pub const MultiValueCursorResult = i64;
 
 /// An override for response caching behavior.
+/// A zero value indicates that the origin response's cache control headers should be used.
 pub const CacheOverrideTag = u32;
-pub const CACHE_OVERRIDE_TAG_NONE: CacheOverrideTag = 0x1;
-pub const CACHE_OVERRIDE_TAG_PASS: CacheOverrideTag = 0x2;
-pub const CACHE_OVERRIDE_TAG_TTL: CacheOverrideTag = 0x4;
-pub const CACHE_OVERRIDE_TAG_STALE_WHILE_REVALIDATE: CacheOverrideTag = 0x8;
-pub const CACHE_OVERRIDE_TAG_PCI: CacheOverrideTag = 0x10;
+pub const CACHE_OVERRIDE_TAG_PASS: CacheOverrideTag = 0x1;
+pub const CACHE_OVERRIDE_TAG_TTL: CacheOverrideTag = 0x2;
+pub const CACHE_OVERRIDE_TAG_STALE_WHILE_REVALIDATE: CacheOverrideTag = 0x4;
+pub const CACHE_OVERRIDE_TAG_PCI: CacheOverrideTag = 0x8;
 
 pub const NumBytes = usize;
 
@@ -137,14 +160,448 @@ pub const DoneIdx = u32;
 
 pub const Inserted = u32;
 
+pub const ReadyIdx = u32;
+
+pub const Port = u16;
+
+pub const TimeoutMs = u32;
+
+pub const BackendExists = u32;
+
+pub const IsDynamic = u32;
+
+pub const IsSsl = u32;
+
+pub const BackendHealth = enum(u32) {
+    UNKNOWN = 0,
+    HEALTHY = 1,
+    UNHEALTHY = 2,
+};
+
 pub const ContentEncodings = u32;
 pub const CONTENT_ENCODINGS_GZIP: ContentEncodings = 1;
+
+pub const FramingHeadersMode = enum(u32) {
+    AUTOMATIC = 0,
+    MANUALLY_FROM_HEADERS = 1,
+};
+
+pub const HttpKeepaliveMode = enum(u32) {
+    AUTOMATIC = 0,
+    NO_KEEPALIVE = 1,
+};
+
+pub const TlsVersion = enum(u32) {
+    TLS_1 = 0,
+    TLS_1_1 = 1,
+    TLS_1_2 = 2,
+    TLS_1_3 = 3,
+};
+
+pub const BackendConfigOptions = u32;
+pub const BACKEND_CONFIG_OPTIONS_RESERVED: BackendConfigOptions = 0x1;
+pub const BACKEND_CONFIG_OPTIONS_HOST_OVERRIDE: BackendConfigOptions = 0x2;
+pub const BACKEND_CONFIG_OPTIONS_CONNECT_TIMEOUT: BackendConfigOptions = 0x4;
+pub const BACKEND_CONFIG_OPTIONS_FIRST_BYTE_TIMEOUT: BackendConfigOptions = 0x8;
+pub const BACKEND_CONFIG_OPTIONS_BETWEEN_BYTES_TIMEOUT: BackendConfigOptions = 0x10;
+pub const BACKEND_CONFIG_OPTIONS_USE_SSL: BackendConfigOptions = 0x20;
+pub const BACKEND_CONFIG_OPTIONS_SSL_MIN_VERSION: BackendConfigOptions = 0x40;
+pub const BACKEND_CONFIG_OPTIONS_SSL_MAX_VERSION: BackendConfigOptions = 0x80;
+pub const BACKEND_CONFIG_OPTIONS_CERT_HOSTNAME: BackendConfigOptions = 0x100;
+pub const BACKEND_CONFIG_OPTIONS_CA_CERT: BackendConfigOptions = 0x200;
+pub const BACKEND_CONFIG_OPTIONS_CIPHERS: BackendConfigOptions = 0x400;
+pub const BACKEND_CONFIG_OPTIONS_SNI_HOSTNAME: BackendConfigOptions = 0x800;
+pub const BACKEND_CONFIG_OPTIONS_DONT_POOL: BackendConfigOptions = 0x1000;
+
+pub const DynamicBackendConfig = extern struct {
+    host_override: WasiMutPtr(Char8),
+    host_override_len: u32,
+    connect_timeout_ms: u32,
+    first_byte_timeout_ms: u32,
+    between_bytes_timeout_ms: u32,
+    ssl_min_version: TlsVersion,
+    ssl_max_version: TlsVersion,
+    cert_hostname: WasiMutPtr(Char8),
+    cert_hostname_len: u32,
+    ca_cert: WasiMutPtr(Char8),
+    ca_cert_len: u32,
+    ciphers: WasiMutPtr(Char8),
+    ciphers_len: u32,
+    sni_hostname: WasiMutPtr(Char8),
+    sni_hostname_len: u32,
+};
+
+/// TLS client certificate verified result from downstream.
+pub const ClientCertVerifyResult = enum(u32) {
+    OK = 0,
+    BAD_CERTIFICATE = 1,
+    CERTIFICATE_REVOKED = 2,
+    CERTIFICATE_EXPIRED = 3,
+    UNKNOWN_CA = 4,
+    CERTIFICATE_MISSING = 5,
+    CERTIFICATE_UNKNOWN = 6,
+};
+
+pub const PurgeOptionsMask = u32;
+pub const PURGE_OPTIONS_MASK_SOFT_PURGE: PurgeOptionsMask = 1;
+pub const PURGE_OPTIONS_MASK_RET_BUF: PurgeOptionsMask = 2;
+
+pub const PurgeOptions = extern struct {
+    ret_buf_ptr: WasiMutPtr(u8),
+    ret_buf_len: usize,
+    ret_buf_nwritten_out: WasiMutPtr(usize),
+};
+
+pub const Typenames = struct {};
 
 // ---------------------- Module: [fastly_abi] ----------------------
 
 pub const FastlyAbi = struct {
     pub extern "fastly_abi" fn init(
         abi_version: u64,
+    ) callconv(.C) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_async_io] ----------------------
+
+pub const FastlyAsyncIo = struct {
+    /// Blocks until one of the given objects is ready for I/O, or the optional timeout expires.
+    ///
+    /// Valid object handles includes bodies and pending requests. See the `async_item_handle`
+    /// definition for more details, including what I/O actions are associated with each handle
+    /// type.
+    ///
+    /// The timeout is specified in milliseconds, or 0 if no timeout is desired.
+    ///
+    /// Returns the _index_ (not handle!) of the first object that is ready, or u32::MAX if the
+    /// timeout expires before any objects are ready for I/O.
+    pub extern "fastly_async_io" fn select(
+        hs_ptr: WasiPtr(AsyncItemHandle),
+        hs_len: usize,
+        timeout_ms: u32,
+        result_ptr: WasiMutPtr(ReadyIdx),
+    ) callconv(.C) FastlyStatus;
+
+    /// Returns 1 if the given async item is "ready" for its associated I/O action, 0 otherwise.
+    ///
+    /// If an object is ready, the I/O action is guaranteed to complete without blocking.
+    ///
+    /// Valid object handles includes bodies and pending requests. See the `async_item_handle`
+    /// definition for more details, including what I/O actions are associated with each handle
+    /// type.
+    pub extern "fastly_async_io" fn is_ready(
+        handle: AsyncItemHandle,
+        result_ptr: WasiMutPtr(IsDone),
+    ) callconv(.C) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_backend] ----------------------
+
+pub const FastlyBackend = struct {
+    pub extern "fastly_backend" fn exists(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(BackendExists),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn is_healthy(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(BackendHealth),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn is_dynamic(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(IsDynamic),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_host(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        value: WasiMutPtr(Char8),
+        value_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_override_host(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        value: WasiMutPtr(Char8),
+        value_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_port(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(Port),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_connect_timeout_ms(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(TimeoutMs),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_first_byte_timeout_ms(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(TimeoutMs),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_between_bytes_timeout_ms(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(TimeoutMs),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn is_ssl(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(IsSsl),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_ssl_min_version(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(TlsVersion),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_ssl_max_version(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(TlsVersion),
+    ) callconv(.C) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_cache] ----------------------
+
+/// The outcome of a cache lookup (either bare or as part of a cache transaction)
+pub const CacheHandle = WasiHandle;
+
+pub const CacheObjectLength = u64;
+
+pub const CacheDurationNs = u64;
+
+pub const CacheHitCount = u64;
+
+/// Extensible options for cache lookup operations; currently used for both `lookup` and `transaction_lookup`.
+pub const CacheLookupOptions = extern struct {
+    request_headers: RequestHandle,
+};
+
+pub const CacheLookupOptionsMask = u32;
+pub const CACHE_LOOKUP_OPTIONS_MASK_RESERVED: CacheLookupOptionsMask = 1;
+pub const CACHE_LOOKUP_OPTIONS_MASK_REQUEST_HEADERS: CacheLookupOptionsMask = 2;
+
+/// Configuration for several hostcalls that write to the cache:
+/// - `insert`
+/// - `transaction_insert`
+/// - `transaction_insert_and_stream_back`
+/// - `transaction_update`
+///
+/// Some options are only allowed for certain of these hostcalls; see `cache_write_options_mask`.
+pub const CacheWriteOptions = extern struct {
+    max_age_ns: CacheDurationNs,
+    request_headers: RequestHandle,
+    vary_rule_ptr: WasiMutPtr(Char8),
+    vary_rule_len: usize,
+    __pad32_0: u32 = undefined,
+    initial_age_ns: CacheDurationNs,
+    stale_while_revalidate_ns: CacheDurationNs,
+    surrogate_keys_ptr: WasiMutPtr(Char8),
+    surrogate_keys_len: usize,
+    length: CacheObjectLength,
+    user_metadata_ptr: WasiMutPtr(u8),
+    user_metadata_len: usize,
+};
+
+pub const CacheWriteOptionsMask = u32;
+pub const CACHE_WRITE_OPTIONS_MASK_RESERVED: CacheWriteOptionsMask = 0x1;
+pub const CACHE_WRITE_OPTIONS_MASK_REQUEST_HEADERS: CacheWriteOptionsMask = 0x2;
+pub const CACHE_WRITE_OPTIONS_MASK_VARY_RULE: CacheWriteOptionsMask = 0x4;
+pub const CACHE_WRITE_OPTIONS_MASK_INITIAL_AGE_NS: CacheWriteOptionsMask = 0x8;
+pub const CACHE_WRITE_OPTIONS_MASK_STALE_WHILE_REVALIDATE_NS: CacheWriteOptionsMask = 0x10;
+pub const CACHE_WRITE_OPTIONS_MASK_SURROGATE_KEYS: CacheWriteOptionsMask = 0x20;
+pub const CACHE_WRITE_OPTIONS_MASK_LENGTH: CacheWriteOptionsMask = 0x40;
+pub const CACHE_WRITE_OPTIONS_MASK_USER_METADATA: CacheWriteOptionsMask = 0x80;
+pub const CACHE_WRITE_OPTIONS_MASK_SENSITIVE_DATA: CacheWriteOptionsMask = 0x100;
+
+pub const CacheGetBodyOptions = extern struct {
+    from: u64,
+    to: u64,
+};
+
+pub const CacheGetBodyOptionsMask = u32;
+pub const CACHE_GET_BODY_OPTIONS_MASK_RESERVED: CacheGetBodyOptionsMask = 0x1;
+pub const CACHE_GET_BODY_OPTIONS_MASK_FROM: CacheGetBodyOptionsMask = 0x2;
+pub const CACHE_GET_BODY_OPTIONS_MASK_TO: CacheGetBodyOptionsMask = 0x4;
+
+/// The status of this lookup (and potential transaction)
+pub const CacheLookupState = u32;
+pub const CACHE_LOOKUP_STATE_FOUND: CacheLookupState = 0x1;
+pub const CACHE_LOOKUP_STATE_USABLE: CacheLookupState = 0x2;
+pub const CACHE_LOOKUP_STATE_STALE: CacheLookupState = 0x4;
+pub const CACHE_LOOKUP_STATE_MUST_INSERT_OR_UPDATE: CacheLookupState = 0x8;
+
+pub const FastlyCache = struct {
+    /// Performs a non-request-collapsing cache lookup.
+    ///
+    /// Returns a result without waiting for any request collapsing that may be ongoing.
+    pub extern "fastly_cache" fn lookup(
+        cache_key_ptr: WasiPtr(u8),
+        cache_key_len: usize,
+        options_mask: CacheLookupOptionsMask,
+        options: WasiMutPtr(CacheLookupOptions),
+        result_ptr: WasiMutPtr(CacheHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Performs a non-request-collapsing cache insertion (or update).
+    ///
+    /// The returned handle is to a streaming body that is used for writing the object into
+    /// the cache.
+    pub extern "fastly_cache" fn insert(
+        cache_key_ptr: WasiPtr(u8),
+        cache_key_len: usize,
+        options_mask: CacheWriteOptionsMask,
+        options: WasiMutPtr(CacheWriteOptions),
+        result_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// The entrypoint to the request-collapsing cache transaction API.
+    ///
+    /// This operation always participates in request collapsing and may return stale objects. To bypass
+    /// request collapsing, use `lookup` and `insert` instead.
+    pub extern "fastly_cache" fn transaction_lookup(
+        cache_key_ptr: WasiPtr(u8),
+        cache_key_len: usize,
+        options_mask: CacheLookupOptionsMask,
+        options: WasiMutPtr(CacheLookupOptions),
+        result_ptr: WasiMutPtr(CacheHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Insert an object into the cache with the given metadata.
+    ///
+    /// Can only be used in if the cache handle state includes the `$must_insert_or_update` flag.
+    ///
+    /// The returned handle is to a streaming body that is used for writing the object into
+    /// the cache.
+    pub extern "fastly_cache" fn transaction_insert(
+        handle: CacheHandle,
+        options_mask: CacheWriteOptionsMask,
+        options: WasiMutPtr(CacheWriteOptions),
+        result_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Insert an object into the cache with the given metadata, and return a readable stream of the
+    /// bytes as they are stored.
+    ///
+    /// This helps avoid the "slow reader" problem on a teed stream, for example when a program wishes
+    /// to store a backend request in the cache while simultaneously streaming to a client in an HTTP
+    /// response.
+    ///
+    /// The returned body handle is to a streaming body that is used for writing the object _into_
+    /// the cache. The returned cache handle provides a separate transaction for reading out the
+    /// newly cached object to send elsewhere.
+    pub extern "fastly_cache" fn transaction_insert_and_stream_back(
+        handle: CacheHandle,
+        options_mask: CacheWriteOptionsMask,
+        options: WasiMutPtr(CacheWriteOptions),
+        result_0_ptr: WasiMutPtr(BodyHandle),
+        result_1_ptr: WasiMutPtr(CacheHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Update the metadata of an object in the cache without changing its data.
+    ///
+    /// Can only be used in if the cache handle state includes both of the flags:
+    /// - `$found`
+    /// - `$must_insert_or_update`
+    pub extern "fastly_cache" fn transaction_update(
+        handle: CacheHandle,
+        options_mask: CacheWriteOptionsMask,
+        options: WasiMutPtr(CacheWriteOptions),
+    ) callconv(.C) FastlyStatus;
+
+    /// Cancel an obligation to provide an object to the cache.
+    ///
+    /// Useful if there is an error before streaming is possible, e.g. if a backend is unreachable.
+    pub extern "fastly_cache" fn transaction_cancel(
+        handle: CacheHandle,
+    ) callconv(.C) FastlyStatus;
+
+    /// Close an ongoing interaction with the cache.
+    ///
+    /// If the cache handle state includes the `$must_insert_or_update` (and hence no insert or
+    /// update has been performed), closing the handle cancels any request collapsing, potentially
+    /// choosing a new waiter to perform the insertion/update.
+    pub extern "fastly_cache" fn close(
+        handle: CacheHandle,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_cache" fn get_state(
+        handle: CacheHandle,
+        result_ptr: WasiMutPtr(CacheLookupState),
+    ) callconv(.C) FastlyStatus;
+
+    /// Gets the user metadata of the found object, returning the `$none` error if there
+    /// was no found object.
+    pub extern "fastly_cache" fn get_user_metadata(
+        handle: CacheHandle,
+        user_metadata_out_ptr: WasiMutPtr(u8),
+        user_metadata_out_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    /// Gets a range of the found object body, returning the `$none` error if there
+    /// was no found object.
+    ///
+    /// The returned `body_handle` must be closed before calling this function again on the same
+    /// `cache_handle`.
+    ///
+    /// Note: until the CacheD protocol is adjusted to fully support this functionality,
+    /// the body of objects that are past the stale-while-revalidate period will not
+    /// be available, even when other metadata is.
+    pub extern "fastly_cache" fn get_body(
+        handle: CacheHandle,
+        options_mask: CacheGetBodyOptionsMask,
+        options: CacheGetBodyOptions,
+        result_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Gets the content length of the found object, returning the `$none` error if there
+    /// was no found object, or no content length was provided.
+    pub extern "fastly_cache" fn get_length(
+        handle: CacheHandle,
+        result_ptr: WasiMutPtr(CacheObjectLength),
+    ) callconv(.C) FastlyStatus;
+
+    /// Gets the configured max age of the found object, returning the `$none` error if there
+    /// was no found object.
+    pub extern "fastly_cache" fn get_max_age_ns(
+        handle: CacheHandle,
+        result_ptr: WasiMutPtr(CacheDurationNs),
+    ) callconv(.C) FastlyStatus;
+
+    /// Gets the configured stale-while-revalidate period of the found object, returning the
+    /// `$none` error if there was no found object.
+    pub extern "fastly_cache" fn get_stale_while_revalidate_ns(
+        handle: CacheHandle,
+        result_ptr: WasiMutPtr(CacheDurationNs),
+    ) callconv(.C) FastlyStatus;
+
+    /// Gets the age of the found object, returning the `$none` error if there
+    /// was no found object.
+    pub extern "fastly_cache" fn get_age_ns(
+        handle: CacheHandle,
+        result_ptr: WasiMutPtr(CacheDurationNs),
+    ) callconv(.C) FastlyStatus;
+
+    /// Gets the number of cache hits for the found object, returning the `$none` error if there
+    /// was no found object.
+    pub extern "fastly_cache" fn get_hits(
+        handle: CacheHandle,
+        result_ptr: WasiMutPtr(CacheHitCount),
     ) callconv(.C) FastlyStatus;
 };
 
@@ -164,6 +621,64 @@ pub const FastlyDictionary = struct {
         value: WasiMutPtr(Char8),
         value_max_len: usize,
         result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.C) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_dns] ----------------------
+
+pub const DnsLookupHandle = WasiHandle;
+
+pub const FastlyDns = struct {
+    /// Lookup the IP addresses (IPv4 + IPv6) associated with a name.
+    /// Returns a handle to be consumed by lookup_wait().
+    pub extern "fastly_dns" fn lookup_addr(
+        name_ptr: WasiPtr(Char8),
+        name_len: usize,
+        result_ptr: WasiMutPtr(DnsLookupHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Lookup the names associated with an IP address.
+    /// Returns a handle to be consumed by lookup_wait().
+    pub extern "fastly_dns" fn lookup_reverse(
+        ip_ptr: WasiPtr(Char8),
+        ip_len: usize,
+        result_ptr: WasiMutPtr(DnsLookupHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Lookup the TXT records associated with a name.
+    /// Returns a handle to be consumed by lookup_wait().
+    pub extern "fastly_dns" fn lookup_txt(
+        name_ptr: WasiPtr(Char8),
+        name_len: usize,
+        result_ptr: WasiMutPtr(DnsLookupHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Wait for a DNS lookup to complete.
+    /// Returns an array of byte strings.
+    pub extern "fastly_dns" fn lookup_wait(
+        handle: DnsLookupHandle,
+        buf: WasiMutPtr(Char8),
+        buf_len: usize,
+        cursor: MultiValueCursor,
+        ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    /// Send a raw DNS query.
+    /// Returns a handle to be consumed by lookup_wait_raw().
+    pub extern "fastly_dns" fn lookup_raw(
+        query: WasiPtr(Char8),
+        query_len: usize,
+        result_ptr: WasiMutPtr(DnsLookupHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Wait for a raw DNS response.
+    /// Returns a byte string.
+    pub extern "fastly_dns" fn lookup_wait_raw(
+        handle: DnsLookupHandle,
+        response: WasiMutPtr(Char8),
+        response_len: usize,
+        nwritten_out: WasiMutPtr(usize),
     ) callconv(.C) FastlyStatus;
 };
 
@@ -256,6 +771,21 @@ pub const FastlyHttpReq = struct {
         chello_out: WasiMutPtr(Char8),
         chello_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn downstream_tls_raw_client_certificate(
+        raw_client_cert_out: WasiMutPtr(Char8),
+        raw_client_cert_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn downstream_tls_client_cert_verify_result(
+        result_ptr: WasiMutPtr(ClientCertVerifyResult),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn downstream_tls_ja3_md5(
+        cja_3_md_5_out: WasiMutPtr(Char8),
+        result_ptr: WasiMutPtr(NumBytes),
     ) callconv(.C) FastlyStatus;
 
     pub extern "fastly_http_req" fn new(
@@ -423,6 +953,37 @@ pub const FastlyHttpReq = struct {
         h: RequestHandle,
         encodings: ContentEncodings,
     ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn upgrade_websocket(
+        backend_name_ptr: WasiPtr(Char8),
+        backend_name_len: usize,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn redirect_to_websocket_proxy(
+        backend_name_ptr: WasiPtr(Char8),
+        backend_name_len: usize,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn redirect_to_grip_proxy(
+        backend_name_ptr: WasiPtr(Char8),
+        backend_name_len: usize,
+    ) callconv(.C) FastlyStatus;
+
+    /// Adjust how this requests's framing headers are determined.
+    pub extern "fastly_http_req" fn framing_headers_mode_set(
+        h: RequestHandle,
+        mode: FramingHeadersMode,
+    ) callconv(.C) FastlyStatus;
+
+    /// Create a backend for later use
+    pub extern "fastly_http_req" fn register_dynamic_backend(
+        name_prefix_ptr: WasiPtr(Char8),
+        name_prefix_len: usize,
+        target_ptr: WasiPtr(Char8),
+        target_len: usize,
+        backend_config_mask: BackendConfigOptions,
+        backend_configuration: WasiMutPtr(DynamicBackendConfig),
+    ) callconv(.C) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_http_resp] ----------------------
@@ -520,9 +1081,23 @@ pub const FastlyHttpResp = struct {
     pub extern "fastly_http_resp" fn close(
         h: ResponseHandle,
     ) callconv(.C) FastlyStatus;
+
+    /// Adjust how this response's framing headers are determined.
+    pub extern "fastly_http_resp" fn framing_headers_mode_set(
+        h: ResponseHandle,
+        mode: FramingHeadersMode,
+    ) callconv(.C) FastlyStatus;
+
+    /// Adjust the response's connection reuse mode.
+    pub extern "fastly_http_resp" fn http_keepalive_mode_set(
+        h: ResponseHandle,
+        mode: HttpKeepaliveMode,
+    ) callconv(.C) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_kv] ----------------------
+
+pub const KvStoreHandle = WasiHandle;
 
 pub const FastlyKv = struct {
     pub extern "fastly_kv" fn open(
@@ -562,6 +1137,77 @@ pub const FastlyLog = struct {
         msg_ptr: WasiPtr(u8),
         msg_len: usize,
         result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.C) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_object_store] ----------------------
+
+pub const FastlyObjectStore = struct {
+    pub extern "fastly_object_store" fn open(
+        name_ptr: WasiPtr(Char8),
+        name_len: usize,
+        result_ptr: WasiMutPtr(ObjectStoreHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_object_store" fn lookup(
+        store: ObjectStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        body_handle_out: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_object_store" fn lookup_async(
+        store: ObjectStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        pending_body_handle_out: WasiMutPtr(PendingKvLookupHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_object_store" fn pending_lookup_wait(
+        pending_body_handle: PendingKvLookupHandle,
+        body_handle_out: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_object_store" fn insert(
+        store: ObjectStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        body_handle: BodyHandle,
+    ) callconv(.C) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_purge] ----------------------
+
+pub const FastlyPurge = struct {
+    pub extern "fastly_purge" fn purge_surrogate_key(
+        surrogate_key_ptr: WasiPtr(Char8),
+        surrogate_key_len: usize,
+        options_mask: PurgeOptionsMask,
+        options: WasiMutPtr(PurgeOptions),
+    ) callconv(.C) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_secret_store] ----------------------
+
+pub const FastlySecretStore = struct {
+    pub extern "fastly_secret_store" fn open(
+        name_ptr: WasiPtr(Char8),
+        name_len: usize,
+        result_ptr: WasiMutPtr(SecretStoreHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_secret_store" fn get(
+        store: SecretStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        result_ptr: WasiMutPtr(SecretHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_secret_store" fn plaintext(
+        secret: SecretHandle,
+        buf: WasiMutPtr(Char8),
+        buf_len: usize,
+        nwritten_out: WasiMutPtr(usize),
     ) callconv(.C) FastlyStatus;
 };
 
