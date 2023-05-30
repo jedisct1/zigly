@@ -57,7 +57,14 @@ const RequestHeaders = struct {
         var value_buf = try allocator.alloc(u8, value_len_max);
         var value_len: usize = undefined;
         while (true) {
-            const ret = wasm.FastlyHttpReq.header_value_get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, &value_len);
+            const ret = fastly(wasm.FastlyHttpReq.header_value_get(
+                self.handle,
+                name.ptr,
+                name.len,
+                value_buf.ptr,
+                value_len_max,
+                &value_len,
+            ));
             if (ret) break else |err| {
                 if (err != FastlyError.FastlyBufferTooSmall) {
                     return err;
