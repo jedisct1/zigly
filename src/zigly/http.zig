@@ -46,7 +46,7 @@ const RequestHeaders = struct {
             if (cursor_next < 0) {
                 break;
             }
-            cursor = @intCast(u32, cursor_next);
+            cursor = @as(u32, @intCast(cursor_next));
         }
         return names_list.items;
     }
@@ -110,7 +110,7 @@ const RequestHeaders = struct {
             if (cursor_next < 0) {
                 break;
             }
-            cursor = @intCast(u32, cursor_next);
+            cursor = @as(u32, @intCast(cursor_next));
         }
         return values_list.items;
     }
@@ -357,7 +357,7 @@ const ResponseHeaders = struct {
             if (cursor_next < 0) {
                 break;
             }
-            cursor = @intCast(u32, cursor_next);
+            cursor = @as(u32, @intCast(cursor_next));
         }
         return names_list.items;
     }
@@ -414,7 +414,7 @@ const ResponseHeaders = struct {
             if (cursor_next < 0) {
                 break;
             }
-            cursor = @intCast(u32, cursor_next);
+            cursor = @as(u32, @intCast(cursor_next));
         }
         return values_list.items;
     }
@@ -471,12 +471,12 @@ const OutgoingResponse = struct {
     pub fn getStatus(self: OutgoingResponse) !u16 {
         var status: wasm.HttpStatus = undefined;
         try fastly(wasm.FastlyHttpResp.status_get(self.handle, &status));
-        return @intCast(u16, status);
+        return @as(u16, @intCast(status));
     }
 
     /// Change the status code of a response.
     pub fn setStatus(self: *OutgoingResponse, status: u16) !void {
-        try fastly(wasm.FastlyHttpResp.status_set(self.handle, @intCast(wasm.HttpStatus, status)));
+        try fastly(wasm.FastlyHttpResp.status_set(self.handle, @as(wasm.HttpStatus, @intCast(status))));
     }
 
     /// Zero-copy the content of an incoming response.
@@ -504,7 +504,7 @@ const IncomingResponse = struct {
     pub fn getStatus(self: IncomingResponse) !u16 {
         var status: wasm.HttpStatus = undefined;
         try fastly(wasm.FastlyHttpResp.status_get(self.handle, &status));
-        return @intCast(u16, status);
+        return @as(u16, @intCast(status));
     }
 
     /// Close the response after use.
