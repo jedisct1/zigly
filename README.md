@@ -30,7 +30,7 @@ Zigly is a library that makes it easy to write Compute@Edge modules in [Zig](htt
 
 Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
-Zigly is written for Zig 0.10.x. The stage1 compiler must be used for now.
+Zigly is written for Zig 0.11.x.
 
 ## Usage
 
@@ -53,13 +53,13 @@ The `_start()` function must have that exact type. It replaces the `main()` func
 The program can be compiled with (replace `example.zig` with the source file name):
 
 ```sh
-zig build-exe -fstage1 -target wasm32-wasi example.zig
+zig build-exe -target wasm32-wasi example.zig
 ```
 
-Happy with the result? Add `-O ReleaseSmall` or `-O ReleaseFast` to get very small or very fast module:
+Happy with the result? Add `-Doptimize=ReleaseSmall` or `-Doptimize=ReleaseFast` to get very small or very fast module:
 
 ```sh
-zig build-exe -fstage1 -target wasm32-wasi -O ReleaseSmall example.zig
+zig build-exe -target wasm32-wasi -Doptimize=ReleaseSmall example.zig
 ```
 
 The example above should not compile to more than 411 bytes.
@@ -70,7 +70,7 @@ If you are using a build file instead, define the target as `wasm32-wasi` in the
 const target = try std.zig.CrossTarget.parse(.{ .arch_os_abi = "wasm32-wasi" });
 ```
 
-...and build with `zig build -fstage1 -Drelease-small` or `-Drelease-fast` to get optimized modules.
+...and build with `zig build -Doptimize=ReleaseSmall` or `-Doptimize=ReleaseFast` to get optimized modules.
 
 ### Testing Compute@Edge modules
 
@@ -254,7 +254,7 @@ Add the following lines to the fastly.toml file:
 
 ```toml
 [scripts]
-build = "zig build -fstage1 -Drelease-small -Dtarget=wasm32-wasi && mkdir -p bin && fastly compute pack --wasm-binary zig-out/bin/*"
+build = "zig build -Doptimize=ReleaseSmall -Dtarget=wasm32-wasi && mkdir -p bin && fastly compute pack --wasm-binary zig-out/bin/*"
 ```
 
 3. Package the Compute@Edge module, passing in your compiled WebAssembly module.
