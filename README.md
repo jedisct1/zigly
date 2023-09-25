@@ -3,9 +3,11 @@
 
 The easiest way to write Compute@Edge services in Zig.
 
+- [](#)
   - [What is Compute@Edge?](#what-is-computeedge)
   - [What is Zigly?](#what-is-zigly)
   - [Usage](#usage)
+    - [Adding Zigly as a dependency](#adding-zigly-as-a-dependency)
     - [A minimal WebAssembly program](#a-minimal-webassembly-program)
     - [Testing Compute@Edge modules](#testing-computeedge-modules)
     - [Using Zigly](#using-zigly)
@@ -14,6 +16,9 @@ The easiest way to write Compute@Edge services in Zig.
       - [Making HTTP queries](#making-http-queries)
       - [Cache override](#cache-override)
       - [Pipes](#pipes)
+    - [Proxying](#proxying)
+    - [Redirects](#redirects)
+    - [Response decompression](#response-decompression)
       - [Dictionaries](#dictionaries)
       - [Logging](#logging)
   - [Deployment to Fastly's platform](#deployment-to-fastlys-platform)
@@ -34,21 +39,49 @@ Zigly is written for Zig 0.11.x.
 
 ## Usage
 
+### Adding Zigly as a dependency
+
+Add the following to your `build.zig.zon` file:
+
+```zig
+.{
+    .name = "project",
+    .version = "0.0.1",
+    .dependencies = .{
+        .zigly = .{
+            .url = "https://github.com/jedisct1/zigly/archive/refs/tags/0.1.3.tar.gz",
+            .hash = "122025e93467c3e3855b323fcf6cbd5f569603f17eb72cd626354a7ed11609e900ab",
+        },
+    },
+}
+```
+
+And the following to your `build.zig` file:
+
+```zig
+    const zigly = b.dependency("zigly", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.addModule("zigly", zigly.module("zigly"));
+    exe.linkLibrary(zigly.artifact("zigly"));
+```
+
+The `zigly` structure can be imported in your application with:
+
+```zig
+const zigly = @import("zigly");
+```
+
 ### A minimal WebAssembly program
 
 ```zig
 const std = @import("std");
 
-fn start() !void {
+pub fn main() !void
     std.debug.print("Hello from WebAssembly and Zig!\n", .{});
 }
-
-pub export fn _start() callconv(.C) void {
-    start() catch unreachable;
-}
 ```
-
-The `_start()` function must have that exact type. It replaces the `main()` function.
 
 The program can be compiled with (replace `example.zig` with the source file name):
 
