@@ -1,7 +1,7 @@
 pkgs:
   zigly:
     version: 0.0.0
-    description: "The easiest way to write services for Fastly's Compute@Edge - in Zig."
+    description: "The easiest way to write services for Fastly Compute - in Zig."
     license: Apache-2.0
     source_url: "https://github.com/jedisct1/zigly"
     tags:
