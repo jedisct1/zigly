@@ -406,7 +406,7 @@ test "short" {
     expectEqualStrings("", uri.username);
     expectEqualStrings("", uri.password);
     var buf = [_]u8{0} ** 100;
-    var ip = std.fmt.bufPrint(buf[0..], "{}", .{uri.host.ip}) catch unreachable;
+    const ip = std.fmt.bufPrint(buf[0..], "{}", .{uri.host.ip}) catch unreachable;
     expectEqualStrings("192.0.2.16:80", ip);
     expect(uri.port.? == 80);
     expectEqualStrings("/", uri.path);
@@ -434,7 +434,7 @@ test "ipv6" {
     expectEqualStrings("", uri.username);
     expectEqualStrings("", uri.password);
     var buf = [_]u8{0} ** 100;
-    var ip = std.fmt.bufPrint(buf[0..], "{}", .{uri.host.ip}) catch unreachable;
+    const ip = std.fmt.bufPrint(buf[0..], "{}", .{uri.host.ip}) catch unreachable;
     expectEqualStrings("[2001:db8::7]:389", ip);
     expect(uri.port.? == 389);
     expectEqualStrings("/c=GB", uri.path);
@@ -533,7 +533,7 @@ test "username contains @" {
     expectEqualStrings("1.1.1.1&@2.2.2.2%23", uri.username);
     expectEqualStrings("", uri.password);
     var buf = [_]u8{0} ** 100;
-    var ip = std.fmt.bufPrint(buf[0..], "{}", .{uri.host.ip}) catch unreachable;
+    const ip = std.fmt.bufPrint(buf[0..], "{}", .{uri.host.ip}) catch unreachable;
     expectEqualStrings("3.3.3.3:443", ip);
     expect(uri.port.? == 443);
     expectEqualStrings("", uri.path);

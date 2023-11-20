@@ -13,7 +13,7 @@ const Logger = zigly.Logger;
 fn start() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
     defer _ = gpa.deinit();
-    var allocator = gpa.allocator();
+    const allocator = gpa.allocator();
 
     try zigly.compatibilityCheck();
 

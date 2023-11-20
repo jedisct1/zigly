@@ -152,7 +152,7 @@ const Body = struct {
         var pos: usize = 0;
         var buf = try allocator.alloc(u8, buf_len);
         while (true) {
-            var chunk = try self.read(buf[pos..]);
+            const chunk = try self.read(buf[pos..]);
             if (chunk.len == 0) {
                 return buf[0..pos];
             }

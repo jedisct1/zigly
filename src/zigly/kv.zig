@@ -45,7 +45,7 @@ pub const Store = struct {
         var body: Body = Body{ .handle = body_handle };
         try body.writeAll(value);
 
-        var inserted: wasm.Inserted = undefined;
+        const inserted: wasm.Inserted = undefined;
         try fastly(wasm.FastlyKv.insert(store.handle, key.ptr, key.len, body_handle, ttl, inserted));
     }
 };
