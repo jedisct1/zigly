@@ -5,7 +5,7 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
 
     _ = b.addModule("zigly", .{
-        .source_file = .{ .path = "src/zigly.zig" },
+        .root_source_file = .{ .path = "src/zigly.zig" },
     });
 
     const lib = b.addStaticLibrary(.{
@@ -21,7 +21,7 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = .{ .path = "src/tests.zig" },
         .target = target,
         .optimize = optimize,
+        .strip = true,
     });
-    exe.strip = true;
     b.installArtifact(exe);
 }
