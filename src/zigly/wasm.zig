@@ -74,6 +74,7 @@ pub const FastlyStatus = enum(u32) {
     HTTPHEADTOOLARGE = 11,
     HTTPINVALIDSTATUS = 12,
     LIMITEXCEEDED = 13,
+    AGAIN = 14,
 };
 
 /// A tag indicating HTTP protocol versions.
@@ -114,8 +115,14 @@ pub const DictionaryHandle = WasiHandle;
 /// A handle to an Object Store.
 pub const ObjectStoreHandle = WasiHandle;
 
-/// A handle to a pending KV request.
-pub const PendingKvLookupHandle = WasiHandle;
+/// A handle to a pending Object Store lookup.
+pub const PendingObjectStoreLookupHandle = WasiHandle;
+
+/// A handle to a pending Object Store insert.
+pub const PendingObjectStoreInsertHandle = WasiHandle;
+
+/// A handle to a pending Object Store delete.
+pub const PendingObjectStoreDeleteHandle = WasiHandle;
 
 /// A handle to a Secret Store.
 pub const SecretStoreHandle = WasiHandle;
@@ -157,6 +164,8 @@ pub const HeaderCount = u32;
 pub const IsDone = u32;
 
 pub const DoneIdx = u32;
+
+pub const IsValid = u32;
 
 pub const Inserted = u32;
 
@@ -212,6 +221,8 @@ pub const BACKEND_CONFIG_OPTIONS_CA_CERT: BackendConfigOptions = 0x200;
 pub const BACKEND_CONFIG_OPTIONS_CIPHERS: BackendConfigOptions = 0x400;
 pub const BACKEND_CONFIG_OPTIONS_SNI_HOSTNAME: BackendConfigOptions = 0x800;
 pub const BACKEND_CONFIG_OPTIONS_DONT_POOL: BackendConfigOptions = 0x1000;
+pub const BACKEND_CONFIG_OPTIONS_CLIENT_CERT: BackendConfigOptions = 0x2000;
+pub const BACKEND_CONFIG_OPTIONS_GRPC: BackendConfigOptions = 0x4000;
 
 pub const DynamicBackendConfig = extern struct {
     host_override: WasiMutPtr(Char8),
@@ -229,6 +240,9 @@ pub const DynamicBackendConfig = extern struct {
     ciphers_len: u32,
     sni_hostname: WasiMutPtr(Char8),
     sni_hostname_len: u32,
+    client_certificate: WasiMutPtr(Char8),
+    client_certificate_len: u32,
+    client_key: SecretHandle,
 };
 
 /// TLS client certificate verified result from downstream.
@@ -251,6 +265,63 @@ pub const PurgeOptions = extern struct {
     ret_buf_len: usize,
     ret_buf_nwritten_out: WasiMutPtr(usize),
 };
+
+pub const SendErrorDetailTag = enum(u32) {
+    UNINITIALIZED = 0,
+    OK = 1,
+    DNS_TIMEOUT = 2,
+    DNS_ERROR = 3,
+    DESTINATION_NOT_FOUND = 4,
+    DESTINATION_UNAVAILABLE = 5,
+    DESTINATION_IP_UNROUTABLE = 6,
+    CONNECTION_REFUSED = 7,
+    CONNECTION_TERMINATED = 8,
+    CONNECTION_TIMEOUT = 9,
+    CONNECTION_LIMIT_REACHED = 10,
+    TLS_CERTIFICATE_ERROR = 11,
+    TLS_CONFIGURATION_ERROR = 12,
+    HTTP_INCOMPLETE_RESPONSE = 13,
+    HTTP_RESPONSE_HEADER_SECTION_TOO_LARGE = 14,
+    HTTP_RESPONSE_BODY_TOO_LARGE = 15,
+    HTTP_RESPONSE_TIMEOUT = 16,
+    HTTP_RESPONSE_STATUS_INVALID = 17,
+    HTTP_UPGRADE_FAILED = 18,
+    HTTP_PROTOCOL_ERROR = 19,
+    HTTP_REQUEST_CACHE_KEY_INVALID = 20,
+    HTTP_REQUEST_URI_INVALID = 21,
+    INTERNAL_ERROR = 22,
+    TLS_ALERT_RECEIVED = 23,
+    TLS_PROTOCOL_ERROR = 24,
+};
+
+/// Mask representing which fields are understood by the guest, and which have been set by the host.
+///
+/// When the guest calls hostcalls with a mask, it should set every bit in the mask that corresponds
+/// to a defined flag. This signals the host to write only to fields with a set bit, allowing
+/// forward compatibility for existing guest programs even after new fields are added to the struct.
+pub const SendErrorDetailMask = u32;
+pub const SEND_ERROR_DETAIL_MASK_RESERVED: SendErrorDetailMask = 0x1;
+pub const SEND_ERROR_DETAIL_MASK_DNS_ERROR_RCODE: SendErrorDetailMask = 0x2;
+pub const SEND_ERROR_DETAIL_MASK_DNS_ERROR_INFO_CODE: SendErrorDetailMask = 0x4;
+pub const SEND_ERROR_DETAIL_MASK_TLS_ALERT_ID: SendErrorDetailMask = 0x8;
+
+pub const SendErrorDetail = extern struct {
+    tag: SendErrorDetailTag,
+    mask: SendErrorDetailMask,
+    dns_error_rcode: u16,
+    dns_error_info_code: u16,
+    tls_alert_id: u8,
+};
+
+pub const Blocked = u32;
+
+pub const Rate = u32;
+
+pub const Count = u32;
+
+pub const Has = u32;
+
+pub const BodyLength = u64;
 
 pub const Typenames = struct {};
 
@@ -605,6 +676,40 @@ pub const FastlyCache = struct {
     ) callconv(.C) FastlyStatus;
 };
 
+// ---------------------- Module: [fastly_config_store] ----------------------
+
+/// A handle to an Config Store.
+pub const ConfigStoreHandle = WasiHandle;
+
+pub const FastlyConfigStore = struct {
+    pub extern "fastly_config_store" fn open(
+        name_ptr: WasiPtr(Char8),
+        name_len: usize,
+        result_ptr: WasiMutPtr(ConfigStoreHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_config_store" fn get(
+        h: ConfigStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        value: WasiMutPtr(Char8),
+        value_max_len: usize,
+        result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.C) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_device_detection] ----------------------
+
+pub const FastlyDeviceDetection = struct {
+    pub extern "fastly_device_detection" fn lookup(
+        user_agent_ptr: WasiPtr(Char8),
+        user_agent_len: usize,
+        buf: WasiMutPtr(Char8),
+        buf_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+};
+
 // ---------------------- Module: [fastly_dictionary] ----------------------
 
 pub const FastlyDictionary = struct {
@@ -682,6 +787,66 @@ pub const FastlyDns = struct {
     ) callconv(.C) FastlyStatus;
 };
 
+// ---------------------- Module: [fastly_erl] ----------------------
+
+pub const FastlyErl = struct {
+    pub extern "fastly_erl" fn check_rate(
+        rc_ptr: WasiPtr(Char8),
+        rc_len: usize,
+        entry_ptr: WasiPtr(Char8),
+        entry_len: usize,
+        delta: u32,
+        window: u32,
+        limit: u32,
+        pb_ptr: WasiPtr(Char8),
+        pb_len: usize,
+        ttl: u32,
+        result_ptr: WasiMutPtr(Blocked),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_erl" fn ratecounter_increment(
+        rc_ptr: WasiPtr(Char8),
+        rc_len: usize,
+        entry_ptr: WasiPtr(Char8),
+        entry_len: usize,
+        delta: u32,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_erl" fn ratecounter_lookup_rate(
+        rc_ptr: WasiPtr(Char8),
+        rc_len: usize,
+        entry_ptr: WasiPtr(Char8),
+        entry_len: usize,
+        window: u32,
+        result_ptr: WasiMutPtr(Rate),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_erl" fn ratecounter_lookup_count(
+        rc_ptr: WasiPtr(Char8),
+        rc_len: usize,
+        entry_ptr: WasiPtr(Char8),
+        entry_len: usize,
+        duration: u32,
+        result_ptr: WasiMutPtr(Count),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_erl" fn penaltybox_add(
+        pb_ptr: WasiPtr(Char8),
+        pb_len: usize,
+        entry_ptr: WasiPtr(Char8),
+        entry_len: usize,
+        ttl: u32,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_erl" fn penaltybox_has(
+        pb_ptr: WasiPtr(Char8),
+        pb_len: usize,
+        entry_ptr: WasiPtr(Char8),
+        entry_len: usize,
+        result_ptr: WasiMutPtr(Has),
+    ) callconv(.C) FastlyStatus;
+};
+
 // ---------------------- Module: [fastly_geo] ----------------------
 
 pub const FastlyGeo = struct {
@@ -721,8 +886,72 @@ pub const FastlyHttpBody = struct {
         result_ptr: WasiMutPtr(NumBytes),
     ) callconv(.C) FastlyStatus;
 
+    /// Frees the body on the host.
+    ///
+    /// For streaming bodies, this is a _successful_ stream termination, which will signal
+    /// via framing that the body transfer is complete.
     pub extern "fastly_http_body" fn close(
         h: BodyHandle,
+    ) callconv(.C) FastlyStatus;
+
+    /// Frees a streaming body on the host _unsuccessfully_, so that framing makes clear that
+    /// the body is incomplete.
+    pub extern "fastly_http_body" fn abandon(
+        h: BodyHandle,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_body" fn trailer_append(
+        h: BodyHandle,
+        name_ptr: WasiPtr(u8),
+        name_len: usize,
+        value_ptr: WasiPtr(u8),
+        value_len: usize,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_body" fn trailer_names_get(
+        h: BodyHandle,
+        buf: WasiMutPtr(Char8),
+        buf_len: usize,
+        cursor: MultiValueCursor,
+        ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_body" fn trailer_value_get(
+        h: BodyHandle,
+        name_ptr: WasiPtr(u8),
+        name_len: usize,
+        value: WasiMutPtr(Char8),
+        value_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_body" fn trailer_values_get(
+        h: BodyHandle,
+        name_ptr: WasiPtr(u8),
+        name_len: usize,
+        buf: WasiMutPtr(Char8),
+        buf_len: usize,
+        cursor: MultiValueCursor,
+        ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    /// Returns a u64 body length if the length of a body is known, or `FastlyStatus::None`
+    /// otherwise.
+    ///
+    /// If the length is unknown, it is likely due to the body arising from an HTTP/1.1 message with
+    /// chunked encoding, an HTTP/2 or later message with no `content-length`, or being a streaming
+    /// body.
+    ///
+    /// Note that receiving a length from this function does not guarantee that the full number of
+    /// bytes can actually be read from the body. For example, when proxying a response from a
+    /// backend, this length may reflect the `content-length` promised in the response, but if the
+    /// backend connection is closed prematurely, fewer bytes may be delivered before this body
+    /// handle can no longer be read.
+    pub extern "fastly_http_body" fn known_length(
+        h: BodyHandle,
+        result_ptr: WasiMutPtr(BodyLength),
     ) callconv(.C) FastlyStatus;
 };
 
@@ -753,6 +982,24 @@ pub const FastlyHttpReq = struct {
     pub extern "fastly_http_req" fn downstream_client_ip_addr(
         addr_octets_out: WasiMutPtr(Char8),
         result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn downstream_client_h2_fingerprint(
+        h_2_fp_out: WasiMutPtr(Char8),
+        h_2_fp_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn downstream_client_request_id(
+        reqid_out: WasiMutPtr(Char8),
+        reqid_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn downstream_client_oh_fingerprint(
+        ohfp_out: WasiMutPtr(Char8),
+        ohfp_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
     ) callconv(.C) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_tls_cipher_openssl_name(
@@ -786,6 +1033,12 @@ pub const FastlyHttpReq = struct {
     pub extern "fastly_http_req" fn downstream_tls_ja3_md5(
         cja_3_md_5_out: WasiMutPtr(Char8),
         result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn downstream_tls_ja4(
+        ja_4_out: WasiMutPtr(Char8),
+        ja_4_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
     ) callconv(.C) FastlyStatus;
 
     pub extern "fastly_http_req" fn new(
@@ -908,6 +1161,16 @@ pub const FastlyHttpReq = struct {
         result_1_ptr: WasiMutPtr(BodyHandle),
     ) callconv(.C) FastlyStatus;
 
+    pub extern "fastly_http_req" fn send_v2(
+        h: RequestHandle,
+        b: BodyHandle,
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        error_detail: WasiMutPtr(SendErrorDetail),
+        result_0_ptr: WasiMutPtr(ResponseHandle),
+        result_1_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
     pub extern "fastly_http_req" fn send_async(
         h: RequestHandle,
         b: BodyHandle,
@@ -931,8 +1194,23 @@ pub const FastlyHttpReq = struct {
         result_2_ptr: WasiMutPtr(BodyHandle),
     ) callconv(.C) FastlyStatus;
 
+    pub extern "fastly_http_req" fn pending_req_poll_v2(
+        h: PendingRequestHandle,
+        error_detail: WasiMutPtr(SendErrorDetail),
+        result_0_ptr: WasiMutPtr(IsDone),
+        result_1_ptr: WasiMutPtr(ResponseHandle),
+        result_2_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
     pub extern "fastly_http_req" fn pending_req_wait(
         h: PendingRequestHandle,
+        result_0_ptr: WasiMutPtr(ResponseHandle),
+        result_1_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn pending_req_wait_v2(
+        h: PendingRequestHandle,
+        error_detail: WasiMutPtr(SendErrorDetail),
         result_0_ptr: WasiMutPtr(ResponseHandle),
         result_1_ptr: WasiMutPtr(BodyHandle),
     ) callconv(.C) FastlyStatus;
@@ -943,6 +1221,22 @@ pub const FastlyHttpReq = struct {
         result_0_ptr: WasiMutPtr(DoneIdx),
         result_1_ptr: WasiMutPtr(ResponseHandle),
         result_2_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn pending_req_select_v2(
+        hs_ptr: WasiPtr(PendingRequestHandle),
+        hs_len: usize,
+        error_detail: WasiMutPtr(SendErrorDetail),
+        result_0_ptr: WasiMutPtr(DoneIdx),
+        result_1_ptr: WasiMutPtr(ResponseHandle),
+        result_2_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    /// Returns whether or not the original client request arrived with a
+    /// Fastly-Key belonging to a user with the rights to purge content on this
+    /// service.
+    pub extern "fastly_http_req" fn fastly_key_is_valid(
+        result_ptr: WasiMutPtr(IsValid),
     ) callconv(.C) FastlyStatus;
 
     pub extern "fastly_http_req" fn close(
@@ -965,6 +1259,18 @@ pub const FastlyHttpReq = struct {
     ) callconv(.C) FastlyStatus;
 
     pub extern "fastly_http_req" fn redirect_to_grip_proxy(
+        backend_name_ptr: WasiPtr(Char8),
+        backend_name_len: usize,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn redirect_to_websocket_proxy_v2(
+        h: RequestHandle,
+        backend_name_ptr: WasiPtr(Char8),
+        backend_name_len: usize,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_http_req" fn redirect_to_grip_proxy_v2(
+        h: RequestHandle,
         backend_name_ptr: WasiPtr(Char8),
         backend_name_len: usize,
     ) callconv(.C) FastlyStatus;
@@ -1160,12 +1466,19 @@ pub const FastlyObjectStore = struct {
         store: ObjectStoreHandle,
         key_ptr: WasiPtr(Char8),
         key_len: usize,
-        pending_body_handle_out: WasiMutPtr(PendingKvLookupHandle),
+        pending_handle_out: WasiMutPtr(PendingObjectStoreLookupHandle),
     ) callconv(.C) FastlyStatus;
 
     pub extern "fastly_object_store" fn pending_lookup_wait(
-        pending_body_handle: PendingKvLookupHandle,
+        pending_objstr_handle: PendingObjectStoreLookupHandle,
         body_handle_out: WasiMutPtr(BodyHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_object_store" fn lookup_as_fd(
+        store: ObjectStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        fd_out: WasiMutPtr(u32),
     ) callconv(.C) FastlyStatus;
 
     pub extern "fastly_object_store" fn insert(
@@ -1173,6 +1486,29 @@ pub const FastlyObjectStore = struct {
         key_ptr: WasiPtr(Char8),
         key_len: usize,
         body_handle: BodyHandle,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_object_store" fn insert_async(
+        store: ObjectStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        body_handle: BodyHandle,
+        pending_handle_out: WasiMutPtr(PendingObjectStoreInsertHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_object_store" fn pending_insert_wait(
+        pending_objstr_handle: PendingObjectStoreInsertHandle,
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_object_store" fn delete_async(
+        store: ObjectStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        pending_handle_out: WasiMutPtr(PendingObjectStoreDeleteHandle),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_object_store" fn pending_delete_wait(
+        pending_objstr_handle: PendingObjectStoreDeleteHandle,
     ) callconv(.C) FastlyStatus;
 };
 
@@ -1208,6 +1544,12 @@ pub const FastlySecretStore = struct {
         buf: WasiMutPtr(Char8),
         buf_len: usize,
         nwritten_out: WasiMutPtr(usize),
+    ) callconv(.C) FastlyStatus;
+
+    pub extern "fastly_secret_store" fn from_bytes(
+        buf: WasiMutPtr(Char8),
+        buf_len: usize,
+        result_ptr: WasiMutPtr(SecretHandle),
     ) callconv(.C) FastlyStatus;
 };
 
