@@ -10,6 +10,7 @@ pub const Dictionary = @import("dictionary.zig").Dictionary;
 pub const Logger = @import("logger.zig").Logger;
 const http = @import("http.zig");
 pub const Request = http.Request;
+pub const Downstream = http.Downstream;
 pub const downstream = http.downstream;
 pub const geo = @import("geo.zig");
 pub const kv = @import("kv.zig");

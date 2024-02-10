@@ -513,7 +513,7 @@ const IncomingResponse = struct {
     }
 };
 
-const Downstream = struct {
+pub const Downstream = struct {
     /// Initial request sent to the proxy.
     request: Request,
     /// Response to the initial request sent to the proxy.
