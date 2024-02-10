@@ -8,6 +8,7 @@ const errors = @import("errors.zig");
 const fastly = errors.fastly;
 const FastlyError = errors.FastlyError;
 const Uri = @import("zuri/zuri.zig").Uri;
+const geo = @import("geo.zig");
 
 const RequestHeaders = struct {
     handle: wasm.RequestHandle,
@@ -246,6 +247,22 @@ pub const Request = struct {
     /// Set the request URI.
     pub fn setUriString(self: Request, uri: []const u8) !void {
         try fastly(wasm.FastlyHttpReq.uri_set(self.headers.handle, uri.ptr, uri.len));
+    }
+
+    pub fn geClientIpAddr() !geo.Ip {
+        var ip = geo.Ip.ip16;
+        var count: usize = 0;
+
+        try fastly(wasm.FastlyHttpReq.downstream_client_ip_addr(&ip, &count));
+
+        if (count == 16) {
+            return ip;
+        }
+
+        var ipv4 = geo.Ip.ip4;
+        std.mem.copyForwards(u8, ipv4[0..], ip);
+
+        return ipv4;
     }
 
     /// Create a new request.
