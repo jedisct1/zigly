@@ -249,7 +249,7 @@ pub const Request = struct {
         try fastly(wasm.FastlyHttpReq.uri_set(self.headers.handle, uri.ptr, uri.len));
     }
 
-    pub fn geClientIpAddr() !geo.Ip {
+    pub fn getClientIpAddr() !geo.Ip {
         var ip = geo.Ip.ip16;
         var count: usize = 0;
 
