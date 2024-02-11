@@ -458,14 +458,14 @@ const OutgoingResponse = struct {
     }
 
     /// Send a buffered response, but doesn't close the stream.
+    /// Either call `finish` or `body.close` at the end of the response.
     pub fn flush(self: *OutgoingResponse) !void {
         try fastly(wasm.FastlyHttpResp.send_downstream(self.handle, self.body.handle, 1));
     }
 
-    /// Send a buffered response and close the stream - Calling this function is required.
+    /// Send an unbuffered response and close the stream.
     pub fn finish(self: *OutgoingResponse) !void {
-        try fastly(wasm.FastlyHttpResp.send_downstream(self.handle, self.body.handle, 1));
-        try self.body.close();
+        try fastly(wasm.FastlyHttpResp.send_downstream(self.handle, self.body.handle, 0));
     }
 
     /// Get a the status code of a response.
@@ -525,7 +525,7 @@ pub const Downstream = struct {
         var response = self.response;
         try response.setStatus(status);
         try response.headers.set("Location", uri);
-        try response.flush();
+        try response.finish();
     }
 
     /// Proxy the request and its response to the origin, optionally changing the Host header field
@@ -534,7 +534,7 @@ pub const Downstream = struct {
             try self.request.headers.set("Host", host);
         }
         try fastly(wasm.FastlyHttpReq.send(self.request.headers.handle, self.request.body.handle, backend.ptr, backend.len, &self.response.handle, &self.response.body.handle));
-        try self.response.flush();
+        try self.response.finish();
     }
 
     /// Get the downstream client IP address
