@@ -249,22 +249,6 @@ pub const Request = struct {
         try fastly(wasm.FastlyHttpReq.uri_set(self.headers.handle, uri.ptr, uri.len));
     }
 
-    pub fn getClientIpAddr() !geo.Ip {
-        var ip = geo.Ip.ip16;
-        var count: usize = 0;
-
-        try fastly(wasm.FastlyHttpReq.downstream_client_ip_addr(&ip, &count));
-
-        if (count == 16) {
-            return ip;
-        }
-
-        var ipv4 = geo.Ip.ip4;
-        std.mem.copyForwards(u8, ipv4[0..], ip);
-
-        return ipv4;
-    }
-
     /// Create a new request.
     pub fn new(method: []const u8, uri: []const u8) !Request {
         var req_handle: wasm.RequestHandle = undefined;
@@ -551,6 +535,23 @@ pub const Downstream = struct {
         }
         try fastly(wasm.FastlyHttpReq.send(self.request.headers.handle, self.request.body.handle, backend.ptr, backend.len, &self.response.handle, &self.response.body.handle));
         try self.response.flush();
+    }
+
+    /// Get the downstream client IP address
+    pub fn getClientIpAddr() !geo.Ip {
+        var ip = [_]u8{0} ** 16;
+        var count: usize = 0;
+
+        try fastly(wasm.FastlyHttpReq.downstream_client_ip_addr(&ip, &count));
+
+        if (count == 16) {
+            return geo.Ip{ .ip16 = ip };
+        }
+
+        var ipv4 = [_]u8{0} ** 4;
+        std.mem.copyForwards(u8, ipv4[0..], ip[0..4]);
+
+        return geo.Ip{ .ip4 = ipv4 };
     }
 };
 
