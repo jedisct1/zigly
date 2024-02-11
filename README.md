@@ -41,22 +41,10 @@ Zigly is written for Zig 0.12.x.
 
 ### Adding Zigly as a dependency
 
-Make the `build.zig.zon` file look like the following:
+Add the dependency to your project:
 
-```zig
-.{
-    .name = "project",
-    .version = "0.0.1",
-    .dependencies = .{
-        .zigly = .{
-            .url = "https://github.com/jedisct1/zigly/archive/refs/tags/0.1.4.tar.gz",
-            .hash = "12204cc5ea414342ed02fe734368e09e1c77b8004d98309b8f252e66d180b2fe283b",
-        },
-    },
-    .pathhs = .{
-        "",
-    }
-}
+```sh
+zig fetch --save=zigly https://github.com/jedisct1/zigly/archive/refs/tags/0.1.4.tar.gz
 ```
 
 And the following to your `build.zig` file:
