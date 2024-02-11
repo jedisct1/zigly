@@ -35,13 +35,13 @@ Zigly is a library that makes it easy to write Compute@Edge modules in [Zig](htt
 
 Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
-Zigly is written for Zig 0.11.x.
+Zigly is written for Zig 0.12.x.
 
 ## Usage
 
 ### Adding Zigly as a dependency
 
-Add the following to your `build.zig.zon` file:
+Make the `build.zig.zon` file look like the following:
 
 ```zig
 .{
@@ -49,10 +49,13 @@ Add the following to your `build.zig.zon` file:
     .version = "0.0.1",
     .dependencies = .{
         .zigly = .{
-            .url = "https://github.com/jedisct1/zigly/archive/refs/tags/0.1.3.tar.gz",
-            .hash = "122025e93467c3e3855b323fcf6cbd5f569603f17eb72cd626354a7ed11609e900ab",
+            .url = "https://github.com/jedisct1/zigly/archive/refs/tags/0.1.4.tar.gz",
+            .hash = "12204cc5ea414342ed02fe734368e09e1c77b8004d98309b8f252e66d180b2fe283b",
         },
     },
+    .pathhs = .{
+        "",
+    }
 }
 ```
 
@@ -63,7 +66,7 @@ And the following to your `build.zig` file:
         .target = target,
         .optimize = optimize,
     });
-    exe.addModule("zigly", zigly.module("zigly"));
+    exe.root_module.addImport("zigly", zigly.module("zigly"));
     exe.linkLibrary(zigly.artifact("zigly"));
 ```
 
