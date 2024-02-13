@@ -496,7 +496,7 @@ const OutgoingResponse = struct {
     }
 };
 
-const IncomingResponse = struct {
+pub const IncomingResponse = struct {
     handle: wasm.ResponseHandle,
     headers: ResponseHeaders,
     body: Body,
