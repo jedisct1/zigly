@@ -4,12 +4,12 @@
 The easiest way to write Fastly Compute services in Zig.
 
 - [](#)
-  - [What is Compute@Edge?](#what-is-computeedge)
+  - [What is Fastly Compute?](#what-is-fastly-compute)
   - [What is Zigly?](#what-is-zigly)
   - [Usage](#usage)
     - [Adding Zigly as a dependency](#adding-zigly-as-a-dependency)
     - [A minimal WebAssembly program](#a-minimal-webassembly-program)
-    - [Testing Compute@Edge modules](#testing-computeedge-modules)
+    - [Testing Fastly Compute modules](#testing-fastly-compute-modules)
     - [Using Zigly](#using-zigly)
       - [Hello world!](#hello-world)
       - [Inspecting incoming requests](#inspecting-incoming-requests)
@@ -23,15 +23,15 @@ The easiest way to write Fastly Compute services in Zig.
       - [Logging](#logging)
   - [Deployment to Fastly's platform](#deployment-to-fastlys-platform)
 
-## What is Compute@Edge?
+## What is Fastly Compute?
 
-[Compute@Edge](https://www.fastly.com/products/edge-compute/serverless/) is [Fastly](https://fastly.com)'s service to run custom code directly on CDN nodes.
+[Fastly Compute](https://www.fastly.com/products/edge-compute/serverless/) is [Fastly](https://fastly.com)'s service to run custom code directly on CDN nodes.
 
 The service runs anything that can be compiled to WebAssembly, and exports a convenient set of functions to interact with the platform.
 
 ## What is Zigly?
 
-Zigly is a library that makes it easy to write Compute@Edge modules in [Zig](https://ziglang.org).
+Zigly is a library that makes it easy to write Fastly Compute modules in [Zig](https://ziglang.org).
 
 Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
@@ -96,7 +96,7 @@ const target = try std.zig.CrossTarget.parse(.{ .arch_os_abi = "wasm32-wasi" });
 
 ...and build with `zig build -Doptimize=ReleaseSmall` or `-Doptimize=ReleaseFast` to get optimized modules.
 
-### Testing Compute@Edge modules
+### Testing Fastly Compute modules
 
 The easiest way to test the resulting modules is to use [Viceroy](https://github.com/fastly/Viceroy), a reimplementation of the Fastly API that runs locally.
 
@@ -243,7 +243,7 @@ try downstream.redirect(302, "https://www.perdu.com");
 
 By default, responses are left as-is. Which means that if compression (`Content-Encoding`) was accepted by the client, the response can be compressed.
 
-Calling `setAutoDecompressResponse(true)` on a `Request` object configures the Compute@Edge runtime to decompress gzip-encoded responses before streaming them to the application.
+Calling `setAutoDecompressResponse(true)` on a `Request` object configures the Fastly Compute runtime to decompress gzip-encoded responses before streaming them to the application.
 
 #### Dictionaries
 
@@ -281,7 +281,7 @@ Add the following lines to the fastly.toml file:
 build = "zig build -Doptimize=ReleaseSmall -Dtarget=wasm32-wasi && mkdir -p bin && fastly compute pack --wasm-binary zig-out/bin/*"
 ```
 
-3. Package the Compute@Edge module, passing in your compiled WebAssembly module.
+3. Package the Fastly Compute module, passing in your compiled WebAssembly module.
 
 ```sh
 fastly compute pack --path zig-out/bin/main.wasm
