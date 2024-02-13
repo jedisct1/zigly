@@ -68,12 +68,60 @@ test "IPv6 print" {
     );
 }
 
+/// Response from the call to `lookup`.
+///
+/// {
+///   "area_code": 415,
+///   "as_name": "Fastly, Inc",
+///   "as_number": 54113,
+///   "city": "San Francisco",
+///   "conn_speed": "broadband",
+///   "conn_type": "wired",
+///   "continent": "NA",
+///   "country_code": "US",
+///   "country_code3": "USA",
+///   "country_name": "United States of America",
+///   "latitude": 37.77869,
+///   "longitude": -122.39557,
+///   "metro_code": 0,
+///   "postal_code": "94107",
+///   "proxy_description": "?",
+///   "proxy_type": "?",
+///   "region": "CA",
+///   "utc_offset": -700
+/// }
+const Location = struct {
+    area_code: usize,
+    as_name: []const u8,
+    as_number: usize,
+    city: []const u8,
+    conn_speed: []const u8,
+    conn_type: []const u8,
+    continent: []const u8,
+    country_code: []const u8,
+    country_code3: []const u8,
+    country_name: []const u8,
+    latitude: f32,
+    longitude: f32,
+    metro_code: usize,
+    postal_code: []const u8,
+    proxy_description: []const u8,
+    proxy_type: []const u8,
+    region: []const u8,
+    utc_offset: isize,
+};
+
 /// Get location information about an IP address.
-/// `buf` should be a 256-byte buffer.
-/// The function returns a `buf` slice with the location.
-pub fn lookup(ip: Ip, buf: [256]u8) ![]const u8 {
+/// The function returns a `buf` slice with the location filled with a json
+/// response.
+///
+/// If `buf` is too small, `FastlyBufferTooSmall` will be returned.
+/// 4096 should be a safe size to use.
+pub fn lookup(allocator: std.mem.Allocator, ip: Ip, buf: []u8) !std.json.Parsed(Location) {
     const ip_bin = if (ip == .ip4) ip.ip4[0..] else ip.ip16[0..];
     var len: usize = undefined;
-    try wasm.FastlyGeo.lookup(ip_bin, ip_bin.len, buf.ptr, buf.len, &len);
-    return buf[0..len];
+
+    try fastly(wasm.FastlyGeo.lookup(ip_bin.ptr, ip_bin.len, buf.ptr, buf.len, &len));
+
+    return try std.json.parseFromSlice(Location, allocator, buf[0..len], .{});
 }
