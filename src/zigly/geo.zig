@@ -81,6 +81,7 @@ test "IPv6 print" {
 ///   "country_code": "US",
 ///   "country_code3": "USA",
 ///   "country_name": "United States of America",
+///   "gmt_offset": -700,
 ///   "latitude": 37.77869,
 ///   "longitude": -122.39557,
 ///   "metro_code": 0,
@@ -101,9 +102,11 @@ const Location = struct {
     country_code: []const u8,
     country_code3: []const u8,
     country_name: []const u8,
+    // Not available in Viceroy: https://github.com/fastly/Viceroy/issues/343
+    // gmt_offset: isize,
     latitude: f32,
     longitude: f32,
-    metro_code: usize,
+    metro_code: isize,
     postal_code: []const u8,
     proxy_description: []const u8,
     proxy_type: []const u8,
@@ -123,5 +126,12 @@ pub fn lookup(allocator: std.mem.Allocator, ip: Ip, buf: []u8) !std.json.Parsed(
 
     try fastly(wasm.FastlyGeo.lookup(ip_bin.ptr, ip_bin.len, buf.ptr, buf.len, &len));
 
-    return try std.json.parseFromSlice(Location, allocator, buf[0..len], .{});
+    return try std.json.parseFromSlice(
+        Location,
+        allocator,
+        buf[0..len],
+        .{
+            .ignore_unknown_fields = true,
+        },
+    );
 }
