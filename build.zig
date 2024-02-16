@@ -1,7 +1,12 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) !void {
-    const target = b.standardTargetOptions(.{ .default_target = .{ .cpu_arch = .wasm32, .os_tag = .wasi } });
+    const target = b.standardTargetOptions(.{
+        .default_target = .{
+            .cpu_arch = .wasm32,
+            .os_tag = .wasi,
+        },
+    });
     const optimize = b.standardOptimizeOption(.{});
 
     _ = b.addModule("zigly", .{
