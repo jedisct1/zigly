@@ -7,7 +7,7 @@ const ArenaAllocator = std.heap.ArenaAllocator;
 const zigly = @import("zigly.zig");
 const Dictionary = zigly.Dictionary;
 const UserAgent = zigly.UserAgent;
-const Request = zigly.Request;
+const Request = zigly.http.Request;
 const Logger = zigly.Logger;
 
 fn start() !void {
