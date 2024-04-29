@@ -284,7 +284,7 @@ build = "zig build -Doptimize=ReleaseSmall -Dtarget=wasm32-wasi && mkdir -p bin 
 3. Package the Fastly Compute module, passing in your compiled WebAssembly module.
 
 ```sh
-fastly compute pack --path zig-out/bin/main.wasm
+fastly compute pack -w zig-out/bin/main.wasm
 ```
 
 4. Test locally
