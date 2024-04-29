@@ -44,7 +44,7 @@ Zigly is written for Zig 0.12.x.
 Add the dependency to your project:
 
 ```sh
-zig fetch --save=zigly https://github.com/jedisct1/zigly/archive/refs/tags/0.1.4.tar.gz
+zig fetch --save=zigly https://github.com/jedisct1/zigly/archive/refs/tags/0.1.5.tar.gz
 ```
 
 And the following to your `build.zig` file:
