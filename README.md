@@ -140,14 +140,14 @@ Note that calling `finish()` is always required in order to actually send a resp
 But realistically, most responses will either be simple redirects:
 
 ```zig
-const downstream = try zigly.downstream();
+var downstream = try zigly.downstream();
 try downstream.redirect(302, "https://www.perdu.com");
 ```
 
 or responding directly from the cache, proxying to the origin if the cached entry is nonexistent or expired:
 
 ```zig
-const downstream = try zigly.downstream();
+var downstream = try zigly.downstream();
 try downstream.proxy("google", "www.google.com");
 ```
 
