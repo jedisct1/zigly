@@ -534,6 +534,7 @@ pub const Downstream = struct {
             try self.request.headers.set("Host", host);
         }
         try fastly(wasm.FastlyHttpReq.send(self.request.headers.handle, self.request.body.handle, backend.ptr, backend.len, &self.response.handle, &self.response.body.handle));
+        try self.response.flush();
         try self.response.finish();
     }
 
