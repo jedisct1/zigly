@@ -91,7 +91,7 @@ The example above should not compile to more than 411 bytes.
 If you are using a build file instead, define the target as `wasm32-wasi` in the `build.zig` file:
 
 ```zig
-const target = try std.zig.CrossTarget.parse(.{ .arch_os_abi = "wasm32-wasi" });
+const target =  b.standardTargetOptions(.{ .default_target = .{ .cpu_arch = .wasm32, .os_tag = .wasi } });
 ```
 
 ...and build with `zig build -Doptimize=ReleaseSmall` or `-Doptimize=ReleaseFast` to get optimized modules.
@@ -105,7 +105,7 @@ The easiest way to test the resulting modules is to use [Viceroy](https://github
 #### Hello world!
 
 ```zig
-var downstream = try zigly.downstream();
+const downstream = try zigly.downstream();
 var response = downstream.response;
 try response.body.writeAll("Hello world!");
 try response.finish();
@@ -120,7 +120,7 @@ Every function call may fail with an error from the `FastlyError` set.
 Slightly more complicated example:
 
 ```zig
-var downstream = try zigly.downstream();
+const downstream = try zigly.downstream();
 var response = downstream.response;
 
 response.setStatus(201);
@@ -140,14 +140,14 @@ Note that calling `finish()` is always required in order to actually send a resp
 But realistically, most responses will either be simple redirects:
 
 ```zig
-var downstream = try zigly.downstream();
+const downstream = try zigly.downstream();
 try downstream.redirect(302, "https://www.perdu.com");
 ```
 
 or responding directly from the cache, proxying to the origin if the cached entry is nonexistent or expired:
 
 ```zig
-var downstream = try zigly.downstream();
+const downstream = try zigly.downstream();
 try downstream.proxy("google", "www.google.com");
 ```
 
@@ -215,7 +215,7 @@ With `pipe()`, the response sent to a client can be a direct copy of another res
 ```zig
 var query = try zigly.Request.new("GET", "https://google.com");
 var upstream_response = try query.send("google");
-var downstream = try zigly.downstream();
+const downstream = try zigly.downstream();
 try downstream.response.pipe(&upstream_response, true, true);
 ```
 
@@ -235,7 +235,7 @@ The second parameter is optional. If `null`, the original `Host` header will not
 Redirecting the client to another address can be done with a single function call on the downstream object:
 
 ```zig
-var downstream = try zigly.downstream();
+const downstream = try zigly.downstream();
 try downstream.redirect(302, "https://www.perdu.com");
 ```
 
