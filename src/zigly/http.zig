@@ -457,7 +457,7 @@ const OutgoingResponse = struct {
         };
     }
 
-    /// Send a buffered response, but doesn't close the stream.
+    /// Send a buffered response, but don't close the stream.
     /// Either call `finish` or `body.close` at the end of the response.
     pub fn flush(self: *OutgoingResponse) !void {
         try fastly(wasm.FastlyHttpResp.send_downstream(self.handle, self.body.handle, 1));
