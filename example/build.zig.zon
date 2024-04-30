@@ -1,0 +1,14 @@
+.{
+    .name = "package",
+    .version = "0.0.0",
+
+    .minimum_zig_version = "0.12.0",
+
+    .dependencies = .{
+        .zigly = .{
+            .url = "https://github.com/jedisct1/zigly/archive/refs/tags/0.1.6.tar.gz",
+            .hash = "122094478487972f6743c2ee4105688a03116f56d1ae3e8329ac7c9f87594682e794",
+        },
+    },
+    .paths = .{""},
+}

@@ -7,6 +7,7 @@ The easiest way to write Fastly Compute services in Zig.
   - [What is Fastly Compute?](#what-is-fastly-compute)
   - [What is Zigly?](#what-is-zigly)
   - [Usage](#usage)
+    - [Example application](#example-application)
     - [Adding Zigly as a dependency](#adding-zigly-as-a-dependency)
     - [A minimal WebAssembly program](#a-minimal-webassembly-program)
     - [Testing Fastly Compute modules](#testing-fastly-compute-modules)
@@ -25,7 +26,7 @@ The easiest way to write Fastly Compute services in Zig.
 
 ## What is Fastly Compute?
 
-[Fastly Compute](https://www.fastly.com/products/edge-compute/serverless/) is [Fastly](https://fastly.com)'s service to run custom code directly on CDN nodes.
+[Fastly Compute](https://www.fastly.com/products/compute) is [Fastly](https://fastly.com)'s service to run custom code directly on CDN nodes.
 
 The service runs anything that can be compiled to WebAssembly, and exports a convenient set of functions to interact with the platform.
 
@@ -38,6 +39,14 @@ Beyond the functions exported by the Fastly platform, Zigly will eventually incl
 Zigly is written for Zig 0.12.x.
 
 ## Usage
+
+### Example application
+
+Check out the `example` directory.
+
+This contains an example Fastly application that relays all incoming traffic to a backend server, with transparent caching.
+
+If you just want to use Fastly as a CDN, this is all you need!
 
 ### Adding Zigly as a dependency
 
