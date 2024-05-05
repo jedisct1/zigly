@@ -162,7 +162,7 @@ pub const Uri = struct {
         return allocator.shrink(buf, len);
     }
 
-    pub const scheme_to_port = std.std.StaticStringMap(u16).initComptime(.{
+    pub const scheme_to_port = std.StaticStringMap(u16).initComptime(.{
         .{ "acap", 674 },
         .{ "afp", 548 },
         .{ "dict", 2628 },
