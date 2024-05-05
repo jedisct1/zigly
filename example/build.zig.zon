@@ -6,8 +6,8 @@
 
     .dependencies = .{
         .zigly = .{
-            .url = "https://github.com/jedisct1/zigly/archive/refs/tags/0.1.7.tar.gz",
-            .hash = "122030c5f6e45abd67bc27a215fa8a04a2a1ed6df29dfc7a7a1264bfe8e96dbbd6c9",
+            .url = "https://github.com/jedisct1/zigly/archive/refs/tags/0.1.8.tar.gz",
+            .hash = "1220797e667aa73b2e67a8fac47f0e8d227b865ddc8b45b6f8472c45c8a130cd961d",
         },
     },
     .paths = .{""},
