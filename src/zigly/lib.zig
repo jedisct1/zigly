@@ -1,8 +1,9 @@
+const std = @import("std");
 const wasm = @import("wasm.zig");
 const errors = @import("errors.zig");
 const fastly = errors.fastly;
 
-pub const Uri = @import("zuri/zuri.zig").Uri;
+pub const Uri = std.Uri;
 
 pub const FastlyError = errors.FastlyError;
 pub const UserAgent = @import("useragent.zig").UserAgent;
