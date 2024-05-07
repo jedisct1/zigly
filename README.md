@@ -287,19 +287,19 @@ Add the following lines to the fastly.toml file:
 
 ```toml
 [scripts]
-build = "zig build -Doptimize=ReleaseSmall -Dtarget=wasm32-wasi && mkdir -p bin && fastly compute pack --wasm-binary zig-out/bin/*"
+build = "zig build -Doptimize=ReleaseSmall -Dtarget=wasm32-wasi && mkdir -p bin && cp zig-out/bin/*.wasm bin/main.wasm"
 ```
 
-3. Package the Fastly Compute module, passing in your compiled WebAssembly module.
+3. Compile and package the Fastly Compute module:
 
 ```sh
-fastly compute pack -w zig-out/bin/main.wasm
+fastly compute build
 ```
 
 4. Test locally
 
 ```sh
-fastly compute serve --skip-build --file zig-out/bin/main.wasm
+fastly compute serve
 ```
 
 5. Deploy!
