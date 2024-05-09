@@ -53,7 +53,7 @@ If you just want to use Fastly as a CDN, this is all you need!
 Add the dependency to your project:
 
 ```sh
-zig fetch --save=zigly https://github.com/jedisct1/zigly/archive/refs/tags/0.1.8.tar.gz
+zig fetch --save=zigly https://github.com/jedisct1/zigly/archive/refs/tags/0.1.9.tar.gz
 ```
 
 And the following to your `build.zig` file:
