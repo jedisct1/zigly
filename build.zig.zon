@@ -1,6 +1,7 @@
 .{
-    .name = "zigly",
-    .version = "0.1.5",
+    .name = .zigly,
+    .version = "0.1.6",
+    .fingerprint = 0x9e67876c39819840,
 
     .paths = .{
         "build.zig",
