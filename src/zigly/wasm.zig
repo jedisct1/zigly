@@ -330,7 +330,7 @@ pub const Typenames = struct {};
 pub const FastlyAbi = struct {
     pub extern "fastly_abi" fn init(
         abi_version: u64,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_async_io] ----------------------
@@ -351,7 +351,7 @@ pub const FastlyAsyncIo = struct {
         hs_len: usize,
         timeout_ms: u32,
         result_ptr: WasiMutPtr(ReadyIdx),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Returns 1 if the given async item is "ready" for its associated I/O action, 0 otherwise.
     ///
@@ -363,7 +363,7 @@ pub const FastlyAsyncIo = struct {
     pub extern "fastly_async_io" fn is_ready(
         handle: AsyncItemHandle,
         result_ptr: WasiMutPtr(IsDone),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_backend] ----------------------
@@ -373,19 +373,19 @@ pub const FastlyBackend = struct {
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(BackendExists),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn is_healthy(
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(BackendHealth),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn is_dynamic(
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(IsDynamic),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn get_host(
         backend_ptr: WasiPtr(Char8),
@@ -393,7 +393,7 @@ pub const FastlyBackend = struct {
         value: WasiMutPtr(Char8),
         value_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn get_override_host(
         backend_ptr: WasiPtr(Char8),
@@ -401,49 +401,49 @@ pub const FastlyBackend = struct {
         value: WasiMutPtr(Char8),
         value_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn get_port(
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(Port),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn get_connect_timeout_ms(
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(TimeoutMs),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn get_first_byte_timeout_ms(
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(TimeoutMs),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn get_between_bytes_timeout_ms(
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(TimeoutMs),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn is_ssl(
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(IsSsl),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn get_ssl_min_version(
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(TlsVersion),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_backend" fn get_ssl_max_version(
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(TlsVersion),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_cache] ----------------------
@@ -526,7 +526,7 @@ pub const FastlyCache = struct {
         options_mask: CacheLookupOptionsMask,
         options: WasiMutPtr(CacheLookupOptions),
         result_ptr: WasiMutPtr(CacheHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Performs a non-request-collapsing cache insertion (or update).
     ///
@@ -538,7 +538,7 @@ pub const FastlyCache = struct {
         options_mask: CacheWriteOptionsMask,
         options: WasiMutPtr(CacheWriteOptions),
         result_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// The entrypoint to the request-collapsing cache transaction API.
     ///
@@ -550,7 +550,7 @@ pub const FastlyCache = struct {
         options_mask: CacheLookupOptionsMask,
         options: WasiMutPtr(CacheLookupOptions),
         result_ptr: WasiMutPtr(CacheHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Insert an object into the cache with the given metadata.
     ///
@@ -563,7 +563,7 @@ pub const FastlyCache = struct {
         options_mask: CacheWriteOptionsMask,
         options: WasiMutPtr(CacheWriteOptions),
         result_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Insert an object into the cache with the given metadata, and return a readable stream of the
     /// bytes as they are stored.
@@ -581,7 +581,7 @@ pub const FastlyCache = struct {
         options: WasiMutPtr(CacheWriteOptions),
         result_0_ptr: WasiMutPtr(BodyHandle),
         result_1_ptr: WasiMutPtr(CacheHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Update the metadata of an object in the cache without changing its data.
     ///
@@ -592,14 +592,14 @@ pub const FastlyCache = struct {
         handle: CacheHandle,
         options_mask: CacheWriteOptionsMask,
         options: WasiMutPtr(CacheWriteOptions),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Cancel an obligation to provide an object to the cache.
     ///
     /// Useful if there is an error before streaming is possible, e.g. if a backend is unreachable.
     pub extern "fastly_cache" fn transaction_cancel(
         handle: CacheHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Close an ongoing interaction with the cache.
     ///
@@ -608,12 +608,12 @@ pub const FastlyCache = struct {
     /// choosing a new waiter to perform the insertion/update.
     pub extern "fastly_cache" fn close(
         handle: CacheHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_cache" fn get_state(
         handle: CacheHandle,
         result_ptr: WasiMutPtr(CacheLookupState),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Gets the user metadata of the found object, returning the `$none` error if there
     /// was no found object.
@@ -622,7 +622,7 @@ pub const FastlyCache = struct {
         user_metadata_out_ptr: WasiMutPtr(u8),
         user_metadata_out_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Gets a range of the found object body, returning the `$none` error if there
     /// was no found object.
@@ -638,42 +638,42 @@ pub const FastlyCache = struct {
         options_mask: CacheGetBodyOptionsMask,
         options: CacheGetBodyOptions,
         result_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Gets the content length of the found object, returning the `$none` error if there
     /// was no found object, or no content length was provided.
     pub extern "fastly_cache" fn get_length(
         handle: CacheHandle,
         result_ptr: WasiMutPtr(CacheObjectLength),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Gets the configured max age of the found object, returning the `$none` error if there
     /// was no found object.
     pub extern "fastly_cache" fn get_max_age_ns(
         handle: CacheHandle,
         result_ptr: WasiMutPtr(CacheDurationNs),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Gets the configured stale-while-revalidate period of the found object, returning the
     /// `$none` error if there was no found object.
     pub extern "fastly_cache" fn get_stale_while_revalidate_ns(
         handle: CacheHandle,
         result_ptr: WasiMutPtr(CacheDurationNs),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Gets the age of the found object, returning the `$none` error if there
     /// was no found object.
     pub extern "fastly_cache" fn get_age_ns(
         handle: CacheHandle,
         result_ptr: WasiMutPtr(CacheDurationNs),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Gets the number of cache hits for the found object, returning the `$none` error if there
     /// was no found object.
     pub extern "fastly_cache" fn get_hits(
         handle: CacheHandle,
         result_ptr: WasiMutPtr(CacheHitCount),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_config_store] ----------------------
@@ -686,7 +686,7 @@ pub const FastlyConfigStore = struct {
         name_ptr: WasiPtr(Char8),
         name_len: usize,
         result_ptr: WasiMutPtr(ConfigStoreHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_config_store" fn get(
         h: ConfigStoreHandle,
@@ -695,7 +695,7 @@ pub const FastlyConfigStore = struct {
         value: WasiMutPtr(Char8),
         value_max_len: usize,
         result_ptr: WasiMutPtr(NumBytes),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_device_detection] ----------------------
@@ -707,7 +707,7 @@ pub const FastlyDeviceDetection = struct {
         buf: WasiMutPtr(Char8),
         buf_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_dictionary] ----------------------
@@ -717,7 +717,7 @@ pub const FastlyDictionary = struct {
         name_ptr: WasiPtr(Char8),
         name_len: usize,
         result_ptr: WasiMutPtr(DictionaryHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_dictionary" fn get(
         h: DictionaryHandle,
@@ -726,7 +726,7 @@ pub const FastlyDictionary = struct {
         value: WasiMutPtr(Char8),
         value_max_len: usize,
         result_ptr: WasiMutPtr(NumBytes),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_dns] ----------------------
@@ -740,7 +740,7 @@ pub const FastlyDns = struct {
         name_ptr: WasiPtr(Char8),
         name_len: usize,
         result_ptr: WasiMutPtr(DnsLookupHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Lookup the names associated with an IP address.
     /// Returns a handle to be consumed by lookup_wait().
@@ -748,7 +748,7 @@ pub const FastlyDns = struct {
         ip_ptr: WasiPtr(Char8),
         ip_len: usize,
         result_ptr: WasiMutPtr(DnsLookupHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Lookup the TXT records associated with a name.
     /// Returns a handle to be consumed by lookup_wait().
@@ -756,7 +756,7 @@ pub const FastlyDns = struct {
         name_ptr: WasiPtr(Char8),
         name_len: usize,
         result_ptr: WasiMutPtr(DnsLookupHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Wait for a DNS lookup to complete.
     /// Returns an array of byte strings.
@@ -767,7 +767,7 @@ pub const FastlyDns = struct {
         cursor: MultiValueCursor,
         ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Send a raw DNS query.
     /// Returns a handle to be consumed by lookup_wait_raw().
@@ -775,7 +775,7 @@ pub const FastlyDns = struct {
         query: WasiPtr(Char8),
         query_len: usize,
         result_ptr: WasiMutPtr(DnsLookupHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Wait for a raw DNS response.
     /// Returns a byte string.
@@ -784,7 +784,7 @@ pub const FastlyDns = struct {
         response: WasiMutPtr(Char8),
         response_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_erl] ----------------------
@@ -802,7 +802,7 @@ pub const FastlyErl = struct {
         pb_len: usize,
         ttl: u32,
         result_ptr: WasiMutPtr(Blocked),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_erl" fn ratecounter_increment(
         rc_ptr: WasiPtr(Char8),
@@ -810,7 +810,7 @@ pub const FastlyErl = struct {
         entry_ptr: WasiPtr(Char8),
         entry_len: usize,
         delta: u32,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_erl" fn ratecounter_lookup_rate(
         rc_ptr: WasiPtr(Char8),
@@ -819,7 +819,7 @@ pub const FastlyErl = struct {
         entry_len: usize,
         window: u32,
         result_ptr: WasiMutPtr(Rate),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_erl" fn ratecounter_lookup_count(
         rc_ptr: WasiPtr(Char8),
@@ -828,7 +828,7 @@ pub const FastlyErl = struct {
         entry_len: usize,
         duration: u32,
         result_ptr: WasiMutPtr(Count),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_erl" fn penaltybox_add(
         pb_ptr: WasiPtr(Char8),
@@ -836,7 +836,7 @@ pub const FastlyErl = struct {
         entry_ptr: WasiPtr(Char8),
         entry_len: usize,
         ttl: u32,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_erl" fn penaltybox_has(
         pb_ptr: WasiPtr(Char8),
@@ -844,7 +844,7 @@ pub const FastlyErl = struct {
         entry_ptr: WasiPtr(Char8),
         entry_len: usize,
         result_ptr: WasiMutPtr(Has),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_geo] ----------------------
@@ -856,7 +856,7 @@ pub const FastlyGeo = struct {
         buf: WasiMutPtr(Char8),
         buf_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_http_body] ----------------------
@@ -865,18 +865,18 @@ pub const FastlyHttpBody = struct {
     pub extern "fastly_http_body" fn append(
         dest: BodyHandle,
         src: BodyHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_body" fn new(
         result_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_body" fn read(
         h: BodyHandle,
         buf: WasiMutPtr(u8),
         buf_len: usize,
         result_ptr: WasiMutPtr(NumBytes),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_body" fn write(
         h: BodyHandle,
@@ -884,7 +884,7 @@ pub const FastlyHttpBody = struct {
         buf_len: usize,
         end: BodyWriteEnd,
         result_ptr: WasiMutPtr(NumBytes),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Frees the body on the host.
     ///
@@ -892,13 +892,13 @@ pub const FastlyHttpBody = struct {
     /// via framing that the body transfer is complete.
     pub extern "fastly_http_body" fn close(
         h: BodyHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Frees a streaming body on the host _unsuccessfully_, so that framing makes clear that
     /// the body is incomplete.
     pub extern "fastly_http_body" fn abandon(
         h: BodyHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_body" fn trailer_append(
         h: BodyHandle,
@@ -906,7 +906,7 @@ pub const FastlyHttpBody = struct {
         name_len: usize,
         value_ptr: WasiPtr(u8),
         value_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_body" fn trailer_names_get(
         h: BodyHandle,
@@ -915,7 +915,7 @@ pub const FastlyHttpBody = struct {
         cursor: MultiValueCursor,
         ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_body" fn trailer_value_get(
         h: BodyHandle,
@@ -924,7 +924,7 @@ pub const FastlyHttpBody = struct {
         value: WasiMutPtr(Char8),
         value_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_body" fn trailer_values_get(
         h: BodyHandle,
@@ -935,7 +935,7 @@ pub const FastlyHttpBody = struct {
         cursor: MultiValueCursor,
         ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Returns a u64 body length if the length of a body is known, or `FastlyStatus::None`
     /// otherwise.
@@ -952,7 +952,7 @@ pub const FastlyHttpBody = struct {
     pub extern "fastly_http_body" fn known_length(
         h: BodyHandle,
         result_ptr: WasiMutPtr(BodyLength),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_http_req] ----------------------
@@ -961,14 +961,14 @@ pub const FastlyHttpReq = struct {
     pub extern "fastly_http_req" fn body_downstream_get(
         result_0_ptr: WasiMutPtr(RequestHandle),
         result_1_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn cache_override_set(
         h: RequestHandle,
         tag: CacheOverrideTag,
         ttl: u32,
         stale_while_revalidate: u32,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn cache_override_v2_set(
         h: RequestHandle,
@@ -977,73 +977,73 @@ pub const FastlyHttpReq = struct {
         stale_while_revalidate: u32,
         sk_ptr: WasiPtr(u8),
         sk_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_client_ip_addr(
         addr_octets_out: WasiMutPtr(Char8),
         result_ptr: WasiMutPtr(NumBytes),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_client_h2_fingerprint(
         h_2_fp_out: WasiMutPtr(Char8),
         h_2_fp_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_client_request_id(
         reqid_out: WasiMutPtr(Char8),
         reqid_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_client_oh_fingerprint(
         ohfp_out: WasiMutPtr(Char8),
         ohfp_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_tls_cipher_openssl_name(
         cipher_out: WasiMutPtr(Char8),
         cipher_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_tls_protocol(
         protocol_out: WasiMutPtr(Char8),
         protocol_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_tls_client_hello(
         chello_out: WasiMutPtr(Char8),
         chello_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_tls_raw_client_certificate(
         raw_client_cert_out: WasiMutPtr(Char8),
         raw_client_cert_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_tls_client_cert_verify_result(
         result_ptr: WasiMutPtr(ClientCertVerifyResult),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_tls_ja3_md5(
         cja_3_md_5_out: WasiMutPtr(Char8),
         result_ptr: WasiMutPtr(NumBytes),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_tls_ja4(
         ja_4_out: WasiMutPtr(Char8),
         ja_4_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn new(
         result_ptr: WasiMutPtr(RequestHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn header_names_get(
         h: RequestHandle,
@@ -1052,7 +1052,7 @@ pub const FastlyHttpReq = struct {
         cursor: MultiValueCursor,
         ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn original_header_names_get(
         buf: WasiMutPtr(Char8),
@@ -1060,11 +1060,11 @@ pub const FastlyHttpReq = struct {
         cursor: MultiValueCursor,
         ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn original_header_count(
         result_ptr: WasiMutPtr(HeaderCount),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn header_value_get(
         h: RequestHandle,
@@ -1073,7 +1073,7 @@ pub const FastlyHttpReq = struct {
         value: WasiMutPtr(Char8),
         value_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn header_values_get(
         h: RequestHandle,
@@ -1084,7 +1084,7 @@ pub const FastlyHttpReq = struct {
         cursor: MultiValueCursor,
         ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn header_values_set(
         h: RequestHandle,
@@ -1092,7 +1092,7 @@ pub const FastlyHttpReq = struct {
         name_len: usize,
         values_ptr: WasiPtr(Char8),
         values_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn header_insert(
         h: RequestHandle,
@@ -1100,7 +1100,7 @@ pub const FastlyHttpReq = struct {
         name_len: usize,
         value_ptr: WasiPtr(u8),
         value_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn header_append(
         h: RequestHandle,
@@ -1108,49 +1108,49 @@ pub const FastlyHttpReq = struct {
         name_len: usize,
         value_ptr: WasiPtr(u8),
         value_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn header_remove(
         h: RequestHandle,
         name_ptr: WasiPtr(u8),
         name_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn method_get(
         h: RequestHandle,
         buf: WasiMutPtr(Char8),
         buf_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn method_set(
         h: RequestHandle,
         method_ptr: WasiPtr(Char8),
         method_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn uri_get(
         h: RequestHandle,
         buf: WasiMutPtr(Char8),
         buf_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn uri_set(
         h: RequestHandle,
         uri_ptr: WasiPtr(Char8),
         uri_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn version_get(
         h: RequestHandle,
         result_ptr: WasiMutPtr(HttpVersion),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn version_set(
         h: RequestHandle,
         version: HttpVersion,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn send(
         h: RequestHandle,
@@ -1159,7 +1159,7 @@ pub const FastlyHttpReq = struct {
         backend_len: usize,
         result_0_ptr: WasiMutPtr(ResponseHandle),
         result_1_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn send_v2(
         h: RequestHandle,
@@ -1169,7 +1169,7 @@ pub const FastlyHttpReq = struct {
         error_detail: WasiMutPtr(SendErrorDetail),
         result_0_ptr: WasiMutPtr(ResponseHandle),
         result_1_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn send_async(
         h: RequestHandle,
@@ -1177,7 +1177,7 @@ pub const FastlyHttpReq = struct {
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(PendingRequestHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn send_async_streaming(
         h: RequestHandle,
@@ -1185,14 +1185,14 @@ pub const FastlyHttpReq = struct {
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
         result_ptr: WasiMutPtr(PendingRequestHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn pending_req_poll(
         h: PendingRequestHandle,
         result_0_ptr: WasiMutPtr(IsDone),
         result_1_ptr: WasiMutPtr(ResponseHandle),
         result_2_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn pending_req_poll_v2(
         h: PendingRequestHandle,
@@ -1200,20 +1200,20 @@ pub const FastlyHttpReq = struct {
         result_0_ptr: WasiMutPtr(IsDone),
         result_1_ptr: WasiMutPtr(ResponseHandle),
         result_2_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn pending_req_wait(
         h: PendingRequestHandle,
         result_0_ptr: WasiMutPtr(ResponseHandle),
         result_1_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn pending_req_wait_v2(
         h: PendingRequestHandle,
         error_detail: WasiMutPtr(SendErrorDetail),
         result_0_ptr: WasiMutPtr(ResponseHandle),
         result_1_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn pending_req_select(
         hs_ptr: WasiPtr(PendingRequestHandle),
@@ -1221,7 +1221,7 @@ pub const FastlyHttpReq = struct {
         result_0_ptr: WasiMutPtr(DoneIdx),
         result_1_ptr: WasiMutPtr(ResponseHandle),
         result_2_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn pending_req_select_v2(
         hs_ptr: WasiPtr(PendingRequestHandle),
@@ -1230,56 +1230,56 @@ pub const FastlyHttpReq = struct {
         result_0_ptr: WasiMutPtr(DoneIdx),
         result_1_ptr: WasiMutPtr(ResponseHandle),
         result_2_ptr: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Returns whether or not the original client request arrived with a
     /// Fastly-Key belonging to a user with the rights to purge content on this
     /// service.
     pub extern "fastly_http_req" fn fastly_key_is_valid(
         result_ptr: WasiMutPtr(IsValid),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn close(
         h: RequestHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn auto_decompress_response_set(
         h: RequestHandle,
         encodings: ContentEncodings,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn upgrade_websocket(
         backend_name_ptr: WasiPtr(Char8),
         backend_name_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn redirect_to_websocket_proxy(
         backend_name_ptr: WasiPtr(Char8),
         backend_name_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn redirect_to_grip_proxy(
         backend_name_ptr: WasiPtr(Char8),
         backend_name_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn redirect_to_websocket_proxy_v2(
         h: RequestHandle,
         backend_name_ptr: WasiPtr(Char8),
         backend_name_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn redirect_to_grip_proxy_v2(
         h: RequestHandle,
         backend_name_ptr: WasiPtr(Char8),
         backend_name_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Adjust how this requests's framing headers are determined.
     pub extern "fastly_http_req" fn framing_headers_mode_set(
         h: RequestHandle,
         mode: FramingHeadersMode,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Create a backend for later use
     pub extern "fastly_http_req" fn register_dynamic_backend(
@@ -1289,7 +1289,7 @@ pub const FastlyHttpReq = struct {
         target_len: usize,
         backend_config_mask: BackendConfigOptions,
         backend_configuration: WasiMutPtr(DynamicBackendConfig),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_http_resp] ----------------------
@@ -1297,7 +1297,7 @@ pub const FastlyHttpReq = struct {
 pub const FastlyHttpResp = struct {
     pub extern "fastly_http_resp" fn new(
         result_ptr: WasiMutPtr(ResponseHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn header_names_get(
         h: ResponseHandle,
@@ -1306,7 +1306,7 @@ pub const FastlyHttpResp = struct {
         cursor: MultiValueCursor,
         ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn header_value_get(
         h: ResponseHandle,
@@ -1315,7 +1315,7 @@ pub const FastlyHttpResp = struct {
         value: WasiMutPtr(Char8),
         value_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn header_values_get(
         h: ResponseHandle,
@@ -1326,7 +1326,7 @@ pub const FastlyHttpResp = struct {
         cursor: MultiValueCursor,
         ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn header_values_set(
         h: ResponseHandle,
@@ -1334,7 +1334,7 @@ pub const FastlyHttpResp = struct {
         name_len: usize,
         values_ptr: WasiPtr(Char8),
         values_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn header_insert(
         h: ResponseHandle,
@@ -1342,7 +1342,7 @@ pub const FastlyHttpResp = struct {
         name_len: usize,
         value_ptr: WasiPtr(u8),
         value_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn header_append(
         h: ResponseHandle,
@@ -1350,55 +1350,55 @@ pub const FastlyHttpResp = struct {
         name_len: usize,
         value_ptr: WasiPtr(u8),
         value_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn header_remove(
         h: ResponseHandle,
         name_ptr: WasiPtr(u8),
         name_len: usize,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn version_get(
         h: ResponseHandle,
         result_ptr: WasiMutPtr(HttpVersion),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn version_set(
         h: ResponseHandle,
         version: HttpVersion,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn send_downstream(
         h: ResponseHandle,
         b: BodyHandle,
         streaming: u32,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn status_get(
         h: ResponseHandle,
         result_ptr: WasiMutPtr(HttpStatus),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn status_set(
         h: ResponseHandle,
         status: HttpStatus,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn close(
         h: ResponseHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Adjust how this response's framing headers are determined.
     pub extern "fastly_http_resp" fn framing_headers_mode_set(
         h: ResponseHandle,
         mode: FramingHeadersMode,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     /// Adjust the response's connection reuse mode.
     pub extern "fastly_http_resp" fn http_keepalive_mode_set(
         h: ResponseHandle,
         mode: HttpKeepaliveMode,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_kv] ----------------------
@@ -1410,14 +1410,14 @@ pub const FastlyKv = struct {
         name_ptr: WasiPtr(Char8),
         name_len: usize,
         result_ptr: WasiMutPtr(KvStoreHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_kv" fn lookup(
         store: KvStoreHandle,
         key_ptr: WasiPtr(u8),
         key_len: usize,
         opt_body_handle_out: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_kv" fn insert(
         store: KvStoreHandle,
@@ -1426,7 +1426,7 @@ pub const FastlyKv = struct {
         body_handle: BodyHandle,
         max_age: u32,
         result_ptr: WasiMutPtr(Inserted),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_log] ----------------------
@@ -1436,14 +1436,14 @@ pub const FastlyLog = struct {
         name_ptr: WasiPtr(u8),
         name_len: usize,
         result_ptr: WasiMutPtr(EndpointHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_log" fn write(
         h: EndpointHandle,
         msg_ptr: WasiPtr(u8),
         msg_len: usize,
         result_ptr: WasiMutPtr(NumBytes),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_object_store] ----------------------
@@ -1453,40 +1453,40 @@ pub const FastlyObjectStore = struct {
         name_ptr: WasiPtr(Char8),
         name_len: usize,
         result_ptr: WasiMutPtr(ObjectStoreHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_object_store" fn lookup(
         store: ObjectStoreHandle,
         key_ptr: WasiPtr(Char8),
         key_len: usize,
         body_handle_out: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_object_store" fn lookup_async(
         store: ObjectStoreHandle,
         key_ptr: WasiPtr(Char8),
         key_len: usize,
         pending_handle_out: WasiMutPtr(PendingObjectStoreLookupHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_object_store" fn pending_lookup_wait(
         pending_objstr_handle: PendingObjectStoreLookupHandle,
         body_handle_out: WasiMutPtr(BodyHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_object_store" fn lookup_as_fd(
         store: ObjectStoreHandle,
         key_ptr: WasiPtr(Char8),
         key_len: usize,
         fd_out: WasiMutPtr(u32),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_object_store" fn insert(
         store: ObjectStoreHandle,
         key_ptr: WasiPtr(Char8),
         key_len: usize,
         body_handle: BodyHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_object_store" fn insert_async(
         store: ObjectStoreHandle,
@@ -1494,22 +1494,22 @@ pub const FastlyObjectStore = struct {
         key_len: usize,
         body_handle: BodyHandle,
         pending_handle_out: WasiMutPtr(PendingObjectStoreInsertHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_object_store" fn pending_insert_wait(
         pending_objstr_handle: PendingObjectStoreInsertHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_object_store" fn delete_async(
         store: ObjectStoreHandle,
         key_ptr: WasiPtr(Char8),
         key_len: usize,
         pending_handle_out: WasiMutPtr(PendingObjectStoreDeleteHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_object_store" fn pending_delete_wait(
         pending_objstr_handle: PendingObjectStoreDeleteHandle,
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_purge] ----------------------
@@ -1520,7 +1520,7 @@ pub const FastlyPurge = struct {
         surrogate_key_len: usize,
         options_mask: PurgeOptionsMask,
         options: WasiMutPtr(PurgeOptions),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_secret_store] ----------------------
@@ -1530,27 +1530,27 @@ pub const FastlySecretStore = struct {
         name_ptr: WasiPtr(Char8),
         name_len: usize,
         result_ptr: WasiMutPtr(SecretStoreHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_secret_store" fn get(
         store: SecretStoreHandle,
         key_ptr: WasiPtr(Char8),
         key_len: usize,
         result_ptr: WasiMutPtr(SecretHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_secret_store" fn plaintext(
         secret: SecretHandle,
         buf: WasiMutPtr(Char8),
         buf_len: usize,
         nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_secret_store" fn from_bytes(
         buf: WasiMutPtr(Char8),
         buf_len: usize,
         result_ptr: WasiMutPtr(SecretHandle),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_uap] ----------------------
@@ -1571,5 +1571,5 @@ pub const FastlyUap = struct {
         patch: WasiMutPtr(Char8),
         patch_len: usize,
         patch_nwritten_out: WasiMutPtr(usize),
-    ) callconv(.C) FastlyStatus;
+    ) callconv(.c) FastlyStatus;
 };

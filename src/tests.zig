@@ -89,6 +89,6 @@ fn start() !void {
     }
 }
 
-pub export fn _start() callconv(.C) void {
+pub export fn _start() callconv(.c) void {
     start() catch unreachable;
 }

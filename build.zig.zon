@@ -1,6 +1,6 @@
 .{
     .name = .zigly,
-    .version = "0.1.10",
+    .version = "0.1.11",
     .fingerprint = 0x9e67876c39819840,
 
     .paths = .{

@@ -36,7 +36,7 @@ Zigly is a library that makes it easy to write Fastly Compute modules in [Zig](h
 
 Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
-Zigly is written for Zig 0.12.x.
+Zigly is written for Zig 0.15.x and later versions.
 
 ## Usage
 
@@ -53,7 +53,7 @@ If you just want to use Fastly as a CDN, this is all you need!
 Add the dependency to your project:
 
 ```sh
-zig fetch --save=zigly https://github.com/jedisct1/zigly/archive/refs/tags/0.1.9.tar.gz
+zig fetch --save=zigly https://github.com/jedisct1/zigly/archive/refs/tags/0.1.11.tar.gz
 ```
 
 And the following to your `build.zig` file:
@@ -78,7 +78,7 @@ const zigly = @import("zigly");
 ```zig
 const std = @import("std");
 
-pub fn main() !void
+pub fn main() !void {
     std.debug.print("Hello from WebAssembly and Zig!\n", .{});
 }
 ```
@@ -100,7 +100,7 @@ The example above should not compile to more than 411 bytes.
 If you are using a build file instead, define the target as `wasm32-wasi` in the `build.zig` file:
 
 ```zig
-const target =  b.standardTargetOptions(.{ .default_target = .{ .cpu_arch = .wasm32, .os_tag = .wasi } });
+const target = b.standardTargetOptions(.{ .default_target = .{ .cpu_arch = .wasm32, .os_tag = .wasi } });
 ```
 
 ...and build with `zig build -Doptimize=ReleaseSmall` or `-Doptimize=ReleaseFast` to get optimized modules.
@@ -140,8 +140,8 @@ try response.flush();
 try response.body.writeAll("Response");
 try response.finish();
 
-var logger = Logger.open("logging_endpoint");
-logger.write("Operation sucessful!");
+var logger = try zigly.Logger.open("logging_endpoint");
+try logger.write("Operation successful!");
 ```
 
 Note that calling `finish()` is always required in order to actually send a response to the client.
@@ -180,7 +180,7 @@ As usual in Zig, memory allocations are never hidden, and applications can choos
 Making HTTP queries is easy:
 
 ```zig
-var query = try zigly.Request.new("GET", "https://example.com");
+var query = try zigly.http.Request.new("GET", "https://example.com");
 var response = try query.send("backend");
 const body = try response.body.readAll(allocator, 0);
 ```
@@ -222,7 +222,7 @@ Attributes include:
 With `pipe()`, the response sent to a client can be a direct copy of another response. The application will then act as a proxy, optionally also copying the original status and headers.
 
 ```zig
-var query = try zigly.Request.new("GET", "https://google.com");
+var query = try zigly.http.Request.new("GET", "https://google.com");
 var upstream_response = try query.send("google");
 const downstream = try zigly.downstream();
 try downstream.response.pipe(&upstream_response, true, true);
@@ -264,7 +264,7 @@ const value = try dict.get(allocator, "key");
 #### Logging
 
 ```zig
-const logger = try zigly.Logger.open("endpoint);
+const logger = try zigly.Logger.open("endpoint");
 try logger.write("Log entry");
 ```
 

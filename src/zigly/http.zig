@@ -14,7 +14,7 @@ const RequestHeaders = struct {
 
     /// Return the full list of header names.
     pub fn names(self: RequestHeaders, allocator: Allocator) ![][]const u8 {
-        var names_list = ArrayList([]const u8).init(allocator);
+        var names_list = ArrayList([]const u8){};
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
         while (true) {
@@ -42,7 +42,7 @@ const RequestHeaders = struct {
                 return FastlyError.FastlyGenericError;
             }
             const name = name_buf[0 .. name_len - 1];
-            try names_list.append(name);
+            try names_list.append(allocator, name);
             if (cursor_next < 0) {
                 break;
             }
@@ -78,7 +78,7 @@ const RequestHeaders = struct {
 
     /// Return all the values for a header.
     pub fn getAll(self: RequestHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
-        var values_list = ArrayList([]const u8).init(allocator);
+        var values_list = ArrayList([]const u8){};
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
         while (true) {
@@ -106,7 +106,7 @@ const RequestHeaders = struct {
                 return FastlyError.FastlyGenericError;
             }
             const value = value_buf[0 .. value_len - 1];
-            try values_list.append(value);
+            try values_list.append(allocator, value);
             if (cursor_next < 0) {
                 break;
             }
@@ -325,7 +325,7 @@ const ResponseHeaders = struct {
 
     /// Return the full list of header names.
     pub fn names(self: ResponseHeaders, allocator: Allocator) ![][]const u8 {
-        var names_list = ArrayList([]const u8).init(allocator);
+        var names_list = ArrayList([]const u8){};
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
         while (true) {
@@ -353,7 +353,7 @@ const ResponseHeaders = struct {
                 return FastlyError.FastlyGenericError;
             }
             const name = name_buf[0 .. name_len - 1];
-            try names_list.append(name);
+            try names_list.append(allocator, name);
             if (cursor_next < 0) {
                 break;
             }
@@ -382,7 +382,7 @@ const ResponseHeaders = struct {
 
     /// Return all the values for a header.
     pub fn getAll(self: RequestHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
-        var values_list = ArrayList([]const u8).init(allocator);
+        var values_list = ArrayList([]const u8){};
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
         while (true) {
@@ -410,7 +410,7 @@ const ResponseHeaders = struct {
                 return FastlyError.FastlyGenericError;
             }
             const value = value_buf[0 .. value_len - 1];
-            try values_list.append(value);
+            try values_list.append(allocator, value);
             if (cursor_next < 0) {
                 break;
             }
