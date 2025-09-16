@@ -9,6 +9,27 @@ const fastly = errors.fastly;
 const FastlyError = errors.FastlyError;
 const geo = @import("geo.zig");
 
+/// URL decode a string for query parameters, handling both percent-encoding and '+' for spaces.
+/// The returned string is owned by the allocator.
+/// Note: This handles '+' to space conversion which std.Uri.percentDecode does not,
+/// as that's specific to application/x-www-form-urlencoded format.
+fn urlDecode(allocator: Allocator, encoded: []const u8) ![]u8 {
+    // First pass: replace '+' with spaces
+    var buffer = try allocator.alloc(u8, encoded.len);
+    for (encoded, 0..) |c, i| {
+        buffer[i] = if (c == '+') ' ' else c;
+    }
+
+    // Second pass: use std.Uri.percentDecodeInPlace for percent-encoding
+    const decoded = std.Uri.percentDecodeInPlace(buffer);
+
+    // Resize to actual decoded length if needed
+    if (decoded.len < buffer.len) {
+        return allocator.realloc(buffer, decoded.len);
+    }
+    return decoded;
+}
+
 const RequestHeaders = struct {
     handle: wasm.RequestHandle,
 
@@ -246,6 +267,71 @@ pub const Request = struct {
     /// Set the request URI.
     pub fn setUriString(self: Request, uri: []const u8) !void {
         try fastly(wasm.FastlyHttpReq.uri_set(self.headers.handle, uri.ptr, uri.len));
+    }
+
+    /// Represents a query parameter key-value pair
+    pub const QueryParam = struct {
+        key: []const u8,
+        value: []const u8,
+    };
+
+    /// Parse query parameters from the request URI into key-value pairs.
+    /// The returned slices point to memory owned by the allocator.
+    pub fn parseQueryParams(self: Request, allocator: Allocator) ![]QueryParam {
+        var uri_buf: [8192]u8 = undefined;
+        const uri = try self.getUriString(&uri_buf);
+
+        // Find the query string part (after '?')
+        const query_start_idx = mem.indexOfScalar(u8, uri, '?') orelse return &[_]QueryParam{};
+        const query_string = uri[query_start_idx + 1 ..];
+
+        if (query_string.len == 0) {
+            return &[_]QueryParam{};
+        }
+
+        // Count the number of parameters (separated by '&')
+        var param_count: usize = 1;
+        for (query_string) |c| {
+            if (c == '&') {
+                param_count += 1;
+            }
+        }
+
+        // Allocate array for parameters
+        var params = try allocator.alloc(QueryParam, param_count);
+        var param_idx: usize = 0;
+
+        // Split by '&' and parse each key-value pair
+        var iter = mem.tokenize(u8, query_string, "&");
+        while (iter.next()) |param| {
+            if (param.len == 0) continue;
+
+            // Split by '=' to get key and value
+            if (mem.indexOfScalar(u8, param, '=')) |eq_idx| {
+                const key = param[0..eq_idx];
+                const value = param[eq_idx + 1 ..];
+
+                // URL decode the key and value
+                const decoded_key = try urlDecode(allocator, key);
+                const decoded_value = try urlDecode(allocator, value);
+
+                params[param_idx] = QueryParam{
+                    .key = decoded_key,
+                    .value = decoded_value,
+                };
+            } else {
+                // No '=' found, treat as key with empty value
+                const decoded_key = try urlDecode(allocator, param);
+                params[param_idx] = QueryParam{
+                    .key = decoded_key,
+                    .value = try allocator.dupe(u8, ""),
+                };
+            }
+            param_idx += 1;
+        }
+
+        // Return only the filled portion of the array
+        return params[0..param_idx];
     }
 
     /// Create a new request.
