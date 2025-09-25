@@ -68,6 +68,19 @@ fn start() !void {
         std.debug.print("{s}\n", .{body});
     }
 
+    // Test the Apache combined log format function
+    {
+        var arena = ArenaAllocator.init(allocator);
+        defer arena.deinit();
+
+        // Log request in Apache combined format
+        // Simulating a 200 OK response with 1234 bytes
+        try request.logApacheCombined(arena.allocator(), "access_log", 200, 1234);
+
+        // Log request with 404 and no content
+        try request.logApacheCombined(arena.allocator(), "access_log", 404, 0);
+    }
+
     {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();

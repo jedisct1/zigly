@@ -8,6 +8,7 @@ const errors = @import("errors.zig");
 const fastly = errors.fastly;
 const FastlyError = errors.FastlyError;
 const geo = @import("geo.zig");
+const logger = @import("logger.zig");
 
 /// URL decode a string for query parameters, handling both percent-encoding and '+' for spaces.
 /// The returned string is owned by the allocator.
@@ -398,6 +399,105 @@ pub const Request = struct {
     pub fn setAutoDecompressResponse(self: *Request, enable: bool) !void {
         const encodings = if (enable) wasm.CONTENT_ENCODINGS_GZIP else 0;
         try fastly(wasm.FastlyHttpReq.auto_decompress_response_set(self.headers.handle, encodings));
+    }
+
+    /// Log the HTTP request in Apache combined log format.
+    /// Format: %h %l %u %t "%r" %>s %b "%{Referer}i" "%{User-Agent}i"
+    /// Note: Response status and size must be provided. Use 0 for size if unknown.
+    pub fn logApacheCombined(self: Request, allocator: Allocator, endpoint_name: []const u8, status: u16, response_size: usize) !void {
+        var log_endpoint = try logger.Logger.open(endpoint_name);
+
+        // Get client IP address
+        const client_ip = Downstream.getClientIpAddr() catch blk: {
+            break :blk geo.Ip{ .ip4 = .{ 0, 0, 0, 0 } };
+        };
+
+        var ip_str: [40]u8 = undefined;
+        const ip_formatted = if (client_ip == .ip4)
+            try std.fmt.bufPrint(&ip_str, "{}.{}.{}.{}", .{ client_ip.ip4[0], client_ip.ip4[1], client_ip.ip4[2], client_ip.ip4[3] })
+        else
+            try std.fmt.bufPrint(&ip_str, "{x:0>4}:{x:0>4}:{x:0>4}:{x:0>4}:{x:0>4}:{x:0>4}:{x:0>4}:{x:0>4}", .{
+                (@as(u16, client_ip.ip16[0]) << 8) | client_ip.ip16[1],
+                (@as(u16, client_ip.ip16[2]) << 8) | client_ip.ip16[3],
+                (@as(u16, client_ip.ip16[4]) << 8) | client_ip.ip16[5],
+                (@as(u16, client_ip.ip16[6]) << 8) | client_ip.ip16[7],
+                (@as(u16, client_ip.ip16[8]) << 8) | client_ip.ip16[9],
+                (@as(u16, client_ip.ip16[10]) << 8) | client_ip.ip16[11],
+                (@as(u16, client_ip.ip16[12]) << 8) | client_ip.ip16[13],
+                (@as(u16, client_ip.ip16[14]) << 8) | client_ip.ip16[15],
+            });
+
+        // Get method and URI for request line
+        var method_buf: [64]u8 = undefined;
+        const method = try self.getMethod(&method_buf);
+
+        var uri_buf: [8192]u8 = undefined;
+        const uri = try self.getUriString(&uri_buf);
+
+        // Get headers we need
+        const user_agent = self.headers.get(allocator, "User-Agent") catch blk: {
+            break :blk try allocator.dupe(u8, "-");
+        };
+        defer allocator.free(user_agent);
+
+        const referer = self.headers.get(allocator, "Referer") catch blk: {
+            break :blk try allocator.dupe(u8, "-");
+        };
+        defer allocator.free(referer);
+
+        // Format timestamp as [day/month/year:hour:minute:second +0000]
+        const timestamp_ms = std.time.milliTimestamp();
+        const timestamp_s = @divTrunc(timestamp_ms, 1000);
+        const epoch_seconds: u64 = @intCast(timestamp_s);
+        const epoch = std.time.epoch.EpochSeconds{ .secs = epoch_seconds };
+        const day_seconds = epoch.getDaySeconds();
+        const year_day = epoch.getEpochDay().calculateYearDay();
+        const month_day = year_day.calculateMonthDay();
+
+        const hours = day_seconds.getHoursIntoDay();
+        const minutes = day_seconds.getMinutesIntoHour();
+        const seconds = day_seconds.getSecondsIntoMinute();
+
+        const month_names = [_][]const u8{
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        };
+        const month_name = month_names[@intFromEnum(month_day.month) - 1];
+
+        var timestamp_buf: [32]u8 = undefined;
+        const timestamp = try std.fmt.bufPrint(&timestamp_buf, "[{d:0>2}/{s}/{d:0>4}:{d:0>2}:{d:0>2}:{d:0>2} +0000]", .{
+            month_day.day_index + 1,
+            month_name,
+            year_day.year,
+            hours,
+            minutes,
+            seconds,
+        });
+
+        // Format response size (- if zero)
+        var size_buf: [32]u8 = undefined;
+        const size_str = if (response_size == 0)
+            "-"
+        else
+            try std.fmt.bufPrint(&size_buf, "{d}", .{response_size});
+
+        // Build the Apache combined log format line
+        const log_msg = try std.fmt.allocPrint(allocator,
+            "{s} - - {s} \"{s} {s} HTTP/1.1\" {d} {s} \"{s}\" \"{s}\"",
+            .{
+                ip_formatted,
+                timestamp,
+                method,
+                uri,
+                status,
+                size_str,
+                referer,
+                user_agent,
+            }
+        );
+        defer allocator.free(log_msg);
+
+        try log_endpoint.write(log_msg);
     }
 
     /// Close the request prematurely.
