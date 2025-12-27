@@ -446,9 +446,10 @@ pub const Request = struct {
         defer allocator.free(referer);
 
         // Format timestamp as [day/month/year:hour:minute:second +0000]
-        const timestamp_ms = std.time.milliTimestamp();
-        const timestamp_s = @divTrunc(timestamp_ms, 1000);
-        const epoch_seconds: u64 = @intCast(timestamp_s);
+        var timestamp_ns: std.os.wasi.timestamp_t = undefined;
+        const rc = std.os.wasi.clock_time_get(.REALTIME, 1, &timestamp_ns);
+        if (rc != .SUCCESS) return FastlyError.FastlyGenericError;
+        const epoch_seconds: u64 = timestamp_ns / std.time.ns_per_s;
         const epoch = std.time.epoch.EpochSeconds{ .secs = epoch_seconds };
         const day_seconds = epoch.getDaySeconds();
         const year_day = epoch.getEpochDay().calculateYearDay();
@@ -458,10 +459,7 @@ pub const Request = struct {
         const minutes = day_seconds.getMinutesIntoHour();
         const seconds = day_seconds.getSecondsIntoMinute();
 
-        const month_names = [_][]const u8{
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-        };
+        const month_names = [_][]const u8{ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         const month_name = month_names[@intFromEnum(month_day.month) - 1];
 
         var timestamp_buf: [32]u8 = undefined;
@@ -482,19 +480,16 @@ pub const Request = struct {
             try std.fmt.bufPrint(&size_buf, "{d}", .{response_size});
 
         // Build the Apache combined log format line
-        const log_msg = try std.fmt.allocPrint(allocator,
-            "{s} - - {s} \"{s} {s} HTTP/1.1\" {d} {s} \"{s}\" \"{s}\"",
-            .{
-                ip_formatted,
-                timestamp,
-                method,
-                uri,
-                status,
-                size_str,
-                referer,
-                user_agent,
-            }
-        );
+        const log_msg = try std.fmt.allocPrint(allocator, "{s} - - {s} \"{s} {s} HTTP/1.1\" {d} {s} \"{s}\" \"{s}\"", .{
+            ip_formatted,
+            timestamp,
+            method,
+            uri,
+            status,
+            size_str,
+            referer,
+            user_agent,
+        });
         defer allocator.free(log_msg);
 
         try log_endpoint.write(log_msg);
