@@ -124,6 +124,33 @@ pub const PendingObjectStoreInsertHandle = WasiHandle;
 /// A handle to a pending Object Store delete.
 pub const PendingObjectStoreDeleteHandle = WasiHandle;
 
+/// A handle to an KV Store.
+pub const KvStoreHandle = WasiHandle;
+
+/// A handle to a KV Store lookup.
+pub const KvStoreLookupHandle = WasiHandle;
+
+/// A handle to a KV Store insert.
+pub const KvStoreInsertHandle = WasiHandle;
+
+/// A handle to a KV Store delete.
+pub const KvStoreDeleteHandle = WasiHandle;
+
+/// A handle to a KV Store list.
+pub const KvStoreListHandle = WasiHandle;
+
+/// A handle to an ACL.
+pub const AclHandle = WasiHandle;
+
+/// A handle to a request promise.
+pub const RequestPromiseHandle = WasiHandle;
+
+/// A handle for cache busy state.
+pub const CacheBusyHandle = WasiHandle;
+
+/// A handle for cache replace operations.
+pub const CacheReplaceHandle = WasiHandle;
+
 /// A handle to a Secret Store.
 pub const SecretStoreHandle = WasiHandle;
 
@@ -181,6 +208,16 @@ pub const IsDynamic = u32;
 
 pub const IsSsl = u32;
 
+pub const IsKeepalive = u32;
+
+pub const TimeoutSecs = u32;
+
+pub const ProbeCount = u32;
+
+pub const DdosDetected = u32;
+
+pub const VcpuMs = u64;
+
 pub const BackendHealth = enum(u32) {
     UNKNOWN = 0,
     HEALTHY = 1,
@@ -223,6 +260,9 @@ pub const BACKEND_CONFIG_OPTIONS_SNI_HOSTNAME: BackendConfigOptions = 0x800;
 pub const BACKEND_CONFIG_OPTIONS_DONT_POOL: BackendConfigOptions = 0x1000;
 pub const BACKEND_CONFIG_OPTIONS_CLIENT_CERT: BackendConfigOptions = 0x2000;
 pub const BACKEND_CONFIG_OPTIONS_GRPC: BackendConfigOptions = 0x4000;
+pub const BACKEND_CONFIG_OPTIONS_KEEPALIVE: BackendConfigOptions = 0x8000;
+pub const BACKEND_CONFIG_OPTIONS_POOLING_LIMITS: BackendConfigOptions = 0x10000;
+pub const BACKEND_CONFIG_OPTIONS_PREFER_IPV4: BackendConfigOptions = 0x20000;
 
 pub const DynamicBackendConfig = extern struct {
     host_override: WasiMutPtr(Char8),
@@ -243,6 +283,14 @@ pub const DynamicBackendConfig = extern struct {
     client_certificate: WasiMutPtr(Char8),
     client_certificate_len: u32,
     client_key: SecretHandle,
+    http_keepalive_time_ms: TimeoutMs,
+    tcp_keepalive_enable: u32,
+    tcp_keepalive_interval_secs: TimeoutSecs,
+    tcp_keepalive_probes: ProbeCount,
+    tcp_keepalive_time_secs: TimeoutSecs,
+    max_connections: u32,
+    max_use: u32,
+    max_lifetime_ms: TimeoutMs,
 };
 
 /// TLS client certificate verified result from downstream.
@@ -316,6 +364,105 @@ pub const SendErrorDetail = extern struct {
 pub const Blocked = u32;
 
 pub const Rate = u32;
+
+pub const InspectInfoMask = u32;
+pub const INSPECT_INFO_MASK_RESERVED: InspectInfoMask = 0x1;
+pub const INSPECT_INFO_MASK_CORP: InspectInfoMask = 0x2;
+pub const INSPECT_INFO_MASK_WORKSPACE: InspectInfoMask = 0x4;
+pub const INSPECT_INFO_MASK_OVERRIDE_CLIENT_IP: InspectInfoMask = 0x8;
+
+pub const InspectInfo = extern struct {
+    corp: WasiMutPtr(Char8),
+    corp_len: u32,
+    workspace: WasiMutPtr(Char8),
+    workspace_len: u32,
+    override_client_ip_ptr: WasiMutPtr(u8),
+    override_client_ip_len: u32,
+};
+
+pub const KvError = enum(u32) {
+    UNINITIALIZED = 0,
+    OK = 1,
+    BAD_REQUEST = 2,
+    NOT_FOUND = 3,
+    PRECONDITION_FAILED = 4,
+    PAYLOAD_TOO_LARGE = 5,
+    INTERNAL_ERROR = 6,
+    TOO_MANY_REQUESTS = 7,
+};
+
+pub const KvLookupConfigOptions = u32;
+pub const KV_LOOKUP_CONFIG_OPTIONS_RESERVED: KvLookupConfigOptions = 0x1;
+
+pub const KvLookupConfig = extern struct {
+    reserved: u32,
+};
+
+pub const KvDeleteConfigOptions = u32;
+pub const KV_DELETE_CONFIG_OPTIONS_RESERVED: KvDeleteConfigOptions = 0x1;
+
+pub const KvDeleteConfig = extern struct {
+    reserved: u32,
+};
+
+pub const KvInsertConfigOptions = u32;
+pub const KV_INSERT_CONFIG_OPTIONS_RESERVED: KvInsertConfigOptions = 0x1;
+pub const KV_INSERT_CONFIG_OPTIONS_BACKGROUND_FETCH: KvInsertConfigOptions = 0x2;
+pub const KV_INSERT_CONFIG_OPTIONS_RESERVED_2: KvInsertConfigOptions = 0x4;
+pub const KV_INSERT_CONFIG_OPTIONS_METADATA: KvInsertConfigOptions = 0x8;
+pub const KV_INSERT_CONFIG_OPTIONS_TIME_TO_LIVE_SEC: KvInsertConfigOptions = 0x10;
+pub const KV_INSERT_CONFIG_OPTIONS_IF_GENERATION_MATCH: KvInsertConfigOptions = 0x20;
+
+pub const KvInsertMode = enum(u32) {
+    OVERWRITE = 0,
+    ADD = 1,
+    APPEND = 2,
+    PREPEND = 3,
+};
+
+pub const KvInsertConfig = extern struct {
+    mode: KvInsertMode,
+    unused: u32,
+    metadata: WasiMutPtr(Char8),
+    metadata_len: u32,
+    time_to_live_sec: u32,
+    if_generation_match: u64,
+};
+
+pub const KvListConfigOptions = u32;
+pub const KV_LIST_CONFIG_OPTIONS_RESERVED: KvListConfigOptions = 0x1;
+pub const KV_LIST_CONFIG_OPTIONS_CURSOR: KvListConfigOptions = 0x2;
+pub const KV_LIST_CONFIG_OPTIONS_LIMIT: KvListConfigOptions = 0x4;
+pub const KV_LIST_CONFIG_OPTIONS_PREFIX: KvListConfigOptions = 0x8;
+
+pub const KvListMode = enum(u32) {
+    STRONG = 0,
+    EVENTUAL = 1,
+};
+
+pub const KvListConfig = extern struct {
+    mode: KvListMode,
+    cursor: WasiMutPtr(Char8),
+    cursor_len: u32,
+    limit: u32,
+    prefix: WasiMutPtr(Char8),
+    prefix_len: u32,
+};
+
+pub const AclError = enum(u32) {
+    UNINITIALIZED = 0,
+    OK = 1,
+    NO_CONTENT = 2,
+    TOO_MANY_REQUESTS = 3,
+};
+
+pub const NextRequestOptionsMask = u32;
+pub const NEXT_REQUEST_OPTIONS_MASK_RESERVED: NextRequestOptionsMask = 0x1;
+pub const NEXT_REQUEST_OPTIONS_MASK_TIMEOUT: NextRequestOptionsMask = 0x2;
+
+pub const NextRequestOptions = extern struct {
+    timeout_ms: u64,
+};
 
 pub const Count = u32;
 
@@ -444,6 +591,36 @@ pub const FastlyBackend = struct {
         backend_len: usize,
         result_ptr: WasiMutPtr(TlsVersion),
     ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_http_keepalive_time(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(TimeoutMs),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_tcp_keepalive_enable(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(IsKeepalive),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_tcp_keepalive_interval(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(TimeoutSecs),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_tcp_keepalive_probes(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(ProbeCount),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_backend" fn get_tcp_keepalive_time(
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        result_ptr: WasiMutPtr(TimeoutSecs),
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_cache] ----------------------
@@ -460,11 +637,31 @@ pub const CacheHitCount = u64;
 /// Extensible options for cache lookup operations; currently used for both `lookup` and `transaction_lookup`.
 pub const CacheLookupOptions = extern struct {
     request_headers: RequestHandle,
+    service_id: WasiMutPtr(Char8),
+    service_id_len: u32,
 };
 
 pub const CacheLookupOptionsMask = u32;
-pub const CACHE_LOOKUP_OPTIONS_MASK_RESERVED: CacheLookupOptionsMask = 1;
-pub const CACHE_LOOKUP_OPTIONS_MASK_REQUEST_HEADERS: CacheLookupOptionsMask = 2;
+pub const CACHE_LOOKUP_OPTIONS_MASK_RESERVED: CacheLookupOptionsMask = 0x1;
+pub const CACHE_LOOKUP_OPTIONS_MASK_REQUEST_HEADERS: CacheLookupOptionsMask = 0x2;
+pub const CACHE_LOOKUP_OPTIONS_MASK_SERVICE_ID: CacheLookupOptionsMask = 0x4;
+pub const CACHE_LOOKUP_OPTIONS_MASK_ALWAYS_USE_REQUESTED_RANGE: CacheLookupOptionsMask = 0x8;
+
+pub const CacheReplaceStrategy = u32;
+
+pub const CacheReplaceOptions = extern struct {
+    request_headers: RequestHandle,
+    replace_strategy: CacheReplaceStrategy,
+    service_id: WasiMutPtr(Char8),
+    service_id_len: u32,
+};
+
+pub const CacheReplaceOptionsMask = u32;
+pub const CACHE_REPLACE_OPTIONS_MASK_RESERVED: CacheReplaceOptionsMask = 0x1;
+pub const CACHE_REPLACE_OPTIONS_MASK_REQUEST_HEADERS: CacheReplaceOptionsMask = 0x2;
+pub const CACHE_REPLACE_OPTIONS_MASK_REPLACE_STRATEGY: CacheReplaceOptionsMask = 0x4;
+pub const CACHE_REPLACE_OPTIONS_MASK_SERVICE_ID: CacheReplaceOptionsMask = 0x8;
+pub const CACHE_REPLACE_OPTIONS_MASK_ALWAYS_USE_REQUESTED_RANGE: CacheReplaceOptionsMask = 0x10;
 
 /// Configuration for several hostcalls that write to the cache:
 /// - `insert`
@@ -486,6 +683,9 @@ pub const CacheWriteOptions = extern struct {
     length: CacheObjectLength,
     user_metadata_ptr: WasiMutPtr(u8),
     user_metadata_len: usize,
+    edge_max_age_ns: CacheDurationNs,
+    service_id: WasiMutPtr(Char8),
+    service_id_len: u32,
 };
 
 pub const CacheWriteOptionsMask = u32;
@@ -498,6 +698,8 @@ pub const CACHE_WRITE_OPTIONS_MASK_SURROGATE_KEYS: CacheWriteOptionsMask = 0x20;
 pub const CACHE_WRITE_OPTIONS_MASK_LENGTH: CacheWriteOptionsMask = 0x40;
 pub const CACHE_WRITE_OPTIONS_MASK_USER_METADATA: CacheWriteOptionsMask = 0x80;
 pub const CACHE_WRITE_OPTIONS_MASK_SENSITIVE_DATA: CacheWriteOptionsMask = 0x100;
+pub const CACHE_WRITE_OPTIONS_MASK_EDGE_MAX_AGE_NS: CacheWriteOptionsMask = 0x200;
+pub const CACHE_WRITE_OPTIONS_MASK_SERVICE_ID: CacheWriteOptionsMask = 0x400;
 
 pub const CacheGetBodyOptions = extern struct {
     from: u64,
@@ -673,6 +875,95 @@ pub const FastlyCache = struct {
     pub extern "fastly_cache" fn get_hits(
         handle: CacheHandle,
         result_ptr: WasiMutPtr(CacheHitCount),
+    ) callconv(.c) FastlyStatus;
+
+    /// Async transaction lookup that returns immediately instead of waiting.
+    pub extern "fastly_cache" fn transaction_lookup_async(
+        cache_key_ptr: WasiPtr(u8),
+        cache_key_len: usize,
+        options_mask: CacheLookupOptionsMask,
+        options: WasiMutPtr(CacheLookupOptions),
+        result_ptr: WasiMutPtr(CacheBusyHandle),
+    ) callconv(.c) FastlyStatus;
+
+    /// Wait for a busy cache handle to complete.
+    pub extern "fastly_cache" fn cache_busy_handle_wait(
+        busy_handle: CacheBusyHandle,
+        result_ptr: WasiMutPtr(CacheHandle),
+    ) callconv(.c) FastlyStatus;
+
+    /// Close a busy cache handle.
+    pub extern "fastly_cache" fn close_busy(
+        handle: CacheBusyHandle,
+    ) callconv(.c) FastlyStatus;
+
+    /// Start a cache replace operation.
+    pub extern "fastly_cache" fn replace(
+        cache_key_ptr: WasiPtr(u8),
+        cache_key_len: usize,
+        options_mask: CacheReplaceOptionsMask,
+        options: WasiMutPtr(CacheReplaceOptions),
+        result_ptr: WasiMutPtr(CacheReplaceHandle),
+    ) callconv(.c) FastlyStatus;
+
+    /// Insert during a replace operation.
+    pub extern "fastly_cache" fn replace_insert(
+        handle: CacheReplaceHandle,
+        options_mask: CacheWriteOptionsMask,
+        options: WasiMutPtr(CacheWriteOptions),
+        result_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the age of the existing object during replace.
+    pub extern "fastly_cache" fn replace_get_age_ns(
+        handle: CacheReplaceHandle,
+        result_ptr: WasiMutPtr(CacheDurationNs),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get a range of the existing object body during replace.
+    pub extern "fastly_cache" fn replace_get_body(
+        handle: CacheReplaceHandle,
+        options_mask: CacheGetBodyOptionsMask,
+        options: CacheGetBodyOptions,
+        result_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the hit count of the existing object during replace.
+    pub extern "fastly_cache" fn replace_get_hits(
+        handle: CacheReplaceHandle,
+        result_ptr: WasiMutPtr(CacheHitCount),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the length of the existing object during replace.
+    pub extern "fastly_cache" fn replace_get_length(
+        handle: CacheReplaceHandle,
+        result_ptr: WasiMutPtr(CacheObjectLength),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the max age of the existing object during replace.
+    pub extern "fastly_cache" fn replace_get_max_age_ns(
+        handle: CacheReplaceHandle,
+        result_ptr: WasiMutPtr(CacheDurationNs),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the stale-while-revalidate period of the existing object during replace.
+    pub extern "fastly_cache" fn replace_get_stale_while_revalidate_ns(
+        handle: CacheReplaceHandle,
+        result_ptr: WasiMutPtr(CacheDurationNs),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the state of the existing object during replace.
+    pub extern "fastly_cache" fn replace_get_state(
+        handle: CacheReplaceHandle,
+        result_ptr: WasiMutPtr(CacheLookupState),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the user metadata of the existing object during replace.
+    pub extern "fastly_cache" fn replace_get_user_metadata(
+        handle: CacheReplaceHandle,
+        user_metadata_out_ptr: WasiMutPtr(u8),
+        user_metadata_out_len: usize,
+        nwritten_out: WasiMutPtr(usize),
     ) callconv(.c) FastlyStatus;
 };
 
@@ -984,6 +1275,11 @@ pub const FastlyHttpReq = struct {
         result_ptr: WasiMutPtr(NumBytes),
     ) callconv(.c) FastlyStatus;
 
+    pub extern "fastly_http_req" fn downstream_server_ip_addr(
+        addr_octets_out: WasiMutPtr(Char8),
+        result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.c) FastlyStatus;
+
     pub extern "fastly_http_req" fn downstream_client_h2_fingerprint(
         h_2_fp_out: WasiMutPtr(Char8),
         h_2_fp_max_len: usize,
@@ -1038,6 +1334,16 @@ pub const FastlyHttpReq = struct {
     pub extern "fastly_http_req" fn downstream_tls_ja4(
         ja_4_out: WasiMutPtr(Char8),
         ja_4_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_req" fn downstream_client_ddos_detected(
+        result_ptr: WasiMutPtr(DdosDetected),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_req" fn downstream_compliance_region(
+        region_out: WasiMutPtr(Char8),
+        region_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
     ) callconv(.c) FastlyStatus;
 
@@ -1171,6 +1477,17 @@ pub const FastlyHttpReq = struct {
         result_1_ptr: WasiMutPtr(BodyHandle),
     ) callconv(.c) FastlyStatus;
 
+    /// Like `send_v2`, but does NOT provide caching of any form.
+    pub extern "fastly_http_req" fn send_v3(
+        h: RequestHandle,
+        b: BodyHandle,
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        error_detail: WasiMutPtr(SendErrorDetail),
+        result_0_ptr: WasiMutPtr(ResponseHandle),
+        result_1_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.c) FastlyStatus;
+
     pub extern "fastly_http_req" fn send_async(
         h: RequestHandle,
         b: BodyHandle,
@@ -1184,6 +1501,16 @@ pub const FastlyHttpReq = struct {
         b: BodyHandle,
         backend_ptr: WasiPtr(Char8),
         backend_len: usize,
+        result_ptr: WasiMutPtr(PendingRequestHandle),
+    ) callconv(.c) FastlyStatus;
+
+    /// Like `send_async`, but does NOT provide caching. Includes streaming flag.
+    pub extern "fastly_http_req" fn send_async_v2(
+        h: RequestHandle,
+        b: BodyHandle,
+        backend_ptr: WasiPtr(Char8),
+        backend_len: usize,
+        streaming: u32,
         result_ptr: WasiMutPtr(PendingRequestHandle),
     ) callconv(.c) FastlyStatus;
 
@@ -1289,6 +1616,24 @@ pub const FastlyHttpReq = struct {
         target_len: usize,
         backend_config_mask: BackendConfigOptions,
         backend_configuration: WasiMutPtr(DynamicBackendConfig),
+    ) callconv(.c) FastlyStatus;
+
+    /// Inspect request HTTP traffic using the NGWAF lookaside service.
+    pub extern "fastly_http_req" fn inspect(
+        req: RequestHandle,
+        body: BodyHandle,
+        insp_info_mask: InspectInfoMask,
+        insp_info: WasiMutPtr(InspectInfo),
+        buf: WasiMutPtr(Char8),
+        buf_len: usize,
+        result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.c) FastlyStatus;
+
+    /// Use the cache of another service for this request.
+    pub extern "fastly_http_req" fn on_behalf_of(
+        req: RequestHandle,
+        service_ptr: WasiPtr(Char8),
+        service_len: usize,
     ) callconv(.c) FastlyStatus;
 };
 
@@ -1398,6 +1743,19 @@ pub const FastlyHttpResp = struct {
     pub extern "fastly_http_resp" fn http_keepalive_mode_set(
         h: ResponseHandle,
         mode: HttpKeepaliveMode,
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the destination IP used for this request.
+    pub extern "fastly_http_resp" fn get_addr_dest_ip(
+        h: ResponseHandle,
+        addr_octets_out: WasiMutPtr(Char8),
+        result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the destination port used for this request.
+    pub extern "fastly_http_resp" fn get_addr_dest_port(
+        h: ResponseHandle,
+        result_ptr: WasiMutPtr(Port),
     ) callconv(.c) FastlyStatus;
 };
 
@@ -1569,5 +1927,271 @@ pub const FastlyUap = struct {
         patch: WasiMutPtr(Char8),
         patch_len: usize,
         patch_nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_http_downstream] ----------------------
+
+pub const FastlyHttpDownstream = struct {
+    /// Accept a new request from a client.
+    pub extern "fastly_http_downstream" fn next_request(
+        options_mask: NextRequestOptionsMask,
+        options: WasiMutPtr(NextRequestOptions),
+        result_ptr: WasiMutPtr(RequestPromiseHandle),
+    ) callconv(.c) FastlyStatus;
+
+    /// Wait for a downstream request.
+    pub extern "fastly_http_downstream" fn next_request_wait(
+        handle: RequestPromiseHandle,
+        result_0_ptr: WasiMutPtr(RequestHandle),
+        result_1_ptr: WasiMutPtr(BodyHandle),
+    ) callconv(.c) FastlyStatus;
+
+    /// Abandon a request promise.
+    pub extern "fastly_http_downstream" fn next_request_abandon(
+        handle: RequestPromiseHandle,
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the original header names for a request.
+    pub extern "fastly_http_downstream" fn downstream_original_header_names(
+        req: RequestHandle,
+        buf: WasiMutPtr(Char8),
+        buf_len: usize,
+        cursor: MultiValueCursor,
+        ending_cursor_out: WasiMutPtr(MultiValueCursorResult),
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the count of original headers.
+    pub extern "fastly_http_downstream" fn downstream_original_header_count(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(HeaderCount),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the client IP address for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_client_ip_addr(
+        req: RequestHandle,
+        addr_octets_out: WasiMutPtr(Char8),
+        result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the server IP address for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_server_ip_addr(
+        req: RequestHandle,
+        addr_octets_out: WasiMutPtr(Char8),
+        result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the HTTP/2 fingerprint for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_client_h2_fingerprint(
+        req: RequestHandle,
+        h2fp_out: WasiMutPtr(Char8),
+        h2fp_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the request ID for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_client_request_id(
+        req: RequestHandle,
+        reqid_out: WasiMutPtr(Char8),
+        reqid_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the OH fingerprint for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_client_oh_fingerprint(
+        req: RequestHandle,
+        ohfp_out: WasiMutPtr(Char8),
+        ohfp_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Check if DDoS detected for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_client_ddos_detected(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(DdosDetected),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the TLS cipher for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_tls_cipher_openssl_name(
+        req: RequestHandle,
+        cipher_out: WasiMutPtr(Char8),
+        cipher_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the TLS protocol for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_tls_protocol(
+        req: RequestHandle,
+        protocol_out: WasiMutPtr(Char8),
+        protocol_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the TLS client hello for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_tls_client_hello(
+        req: RequestHandle,
+        chello_out: WasiMutPtr(Char8),
+        chello_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the raw client certificate for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_tls_raw_client_certificate(
+        req: RequestHandle,
+        raw_client_cert_out: WasiMutPtr(Char8),
+        raw_client_cert_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the client certificate verify result for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_tls_client_cert_verify_result(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ClientCertVerifyResult),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the TLS SNI hostname for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_tls_client_servername(
+        req: RequestHandle,
+        tls_sni_out: WasiMutPtr(Char8),
+        tls_sni_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the JA3 MD5 fingerprint for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_tls_ja3_md5(
+        req: RequestHandle,
+        cja3_md5_out: WasiMutPtr(Char8),
+        result_ptr: WasiMutPtr(NumBytes),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the JA4 fingerprint for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_tls_ja4(
+        req: RequestHandle,
+        ja4_out: WasiMutPtr(Char8),
+        ja4_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the compliance region for a specific request.
+    pub extern "fastly_http_downstream" fn downstream_compliance_region(
+        req: RequestHandle,
+        region_out: WasiMutPtr(Char8),
+        region_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    /// Check if the Fastly key is valid for a specific request.
+    pub extern "fastly_http_downstream" fn fastly_key_is_valid(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(IsValid),
+    ) callconv(.c) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_kv_store] ----------------------
+
+pub const FastlyKvStore = struct {
+    pub extern "fastly_kv_store" fn open(
+        name_ptr: WasiPtr(Char8),
+        name_len: usize,
+        result_ptr: WasiMutPtr(KvStoreHandle),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_kv_store" fn lookup(
+        store: KvStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        lookup_config_mask: KvLookupConfigOptions,
+        lookup_configuration: WasiMutPtr(KvLookupConfig),
+        handle_out: WasiMutPtr(KvStoreLookupHandle),
+    ) callconv(.c) FastlyStatus;
+
+    /// Deprecated: generation always returns 0.
+    pub extern "fastly_kv_store" fn lookup_wait(
+        handle: KvStoreLookupHandle,
+        body_handle_out: WasiMutPtr(BodyHandle),
+        metadata_buf: WasiMutPtr(Char8),
+        metadata_buf_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+        generation_out: WasiMutPtr(u32),
+        kv_error_out: WasiMutPtr(KvError),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_kv_store" fn lookup_wait_v2(
+        handle: KvStoreLookupHandle,
+        body_handle_out: WasiMutPtr(BodyHandle),
+        metadata_buf: WasiMutPtr(Char8),
+        metadata_buf_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+        generation_out: WasiMutPtr(u64),
+        kv_error_out: WasiMutPtr(KvError),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_kv_store" fn insert(
+        store: KvStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        body_handle: BodyHandle,
+        insert_config_mask: KvInsertConfigOptions,
+        insert_configuration: WasiMutPtr(KvInsertConfig),
+        handle_out: WasiMutPtr(KvStoreInsertHandle),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_kv_store" fn insert_wait(
+        handle: KvStoreInsertHandle,
+        kv_error_out: WasiMutPtr(KvError),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_kv_store" fn delete(
+        store: KvStoreHandle,
+        key_ptr: WasiPtr(Char8),
+        key_len: usize,
+        delete_config_mask: KvDeleteConfigOptions,
+        delete_configuration: WasiMutPtr(KvDeleteConfig),
+        handle_out: WasiMutPtr(KvStoreDeleteHandle),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_kv_store" fn delete_wait(
+        handle: KvStoreDeleteHandle,
+        kv_error_out: WasiMutPtr(KvError),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_kv_store" fn list(
+        store: KvStoreHandle,
+        list_config_mask: KvListConfigOptions,
+        list_configuration: WasiMutPtr(KvListConfig),
+        handle_out: WasiMutPtr(KvStoreListHandle),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_kv_store" fn list_wait(
+        handle: KvStoreListHandle,
+        body_handle_out: WasiMutPtr(BodyHandle),
+        kv_error_out: WasiMutPtr(KvError),
+    ) callconv(.c) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_compute_runtime] ----------------------
+
+pub const FastlyComputeRuntime = struct {
+    pub extern "fastly_compute_runtime" fn get_vcpu_ms(
+        result_ptr: WasiMutPtr(VcpuMs),
+    ) callconv(.c) FastlyStatus;
+};
+
+// ---------------------- Module: [fastly_acl] ----------------------
+
+pub const FastlyAcl = struct {
+    pub extern "fastly_acl" fn open(
+        name_ptr: WasiPtr(Char8),
+        name_len: usize,
+        result_ptr: WasiMutPtr(AclHandle),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_acl" fn lookup(
+        acl: AclHandle,
+        ip_octets: WasiPtr(Char8),
+        ip_len: usize,
+        body_handle_out: WasiMutPtr(BodyHandle),
+        acl_error_out: WasiMutPtr(AclError),
     ) callconv(.c) FastlyStatus;
 };
