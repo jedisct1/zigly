@@ -25,6 +25,10 @@ The easiest way to write Fastly Compute services in Zig.
     - [Geolocation](#geolocation)
     - [User Agent Parsing](#user-agent-parsing)
     - [Dynamic Backends](#dynamic-backends)
+    - [ACL (Access Control Lists)](#acl-access-control-lists)
+    - [Device Detection](#device-detection)
+    - [Cache Purging](#cache-purging)
+    - [Runtime Metrics](#runtime-metrics)
 - [Deployment to Fastly's platform](#deployment-to-fastlys-platform)
 
 ## What is Fastly Compute?
@@ -342,6 +346,68 @@ const backend = try backend_config.register();
 const exists = try zigly.Backend.exists("my_backend");
 const is_ssl = try backend.isSsl();
 const port = try backend.getPort();
+```
+
+#### ACL (Access Control Lists)
+
+Check IP addresses against access control lists:
+
+```zig
+const acl = try zigly.Acl.open("my_acl");
+
+const client_ip = zigly.geo.Ip{ .ip4 = .{ 192, 168, 1, 100 } };
+if (try acl.match(allocator, client_ip)) |result| {
+    defer result.deinit();
+    if (result.value.isBlock()) {
+        // IP is blocked
+    }
+    // result.value.action is "BLOCK" or "ALLOW"
+    // result.value.prefix is the matching rule (e.g., "192.168.0.0/16")
+} else {
+    // No matching rule found
+}
+```
+
+#### Device Detection
+
+Detect device type from User-Agent strings:
+
+```zig
+const user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)";
+var buf: [4096]u8 = undefined;
+
+const result = try zigly.device.lookup(allocator, user_agent, &buf);
+defer result.deinit();
+
+// Access device properties
+const device = result.value.device;
+// device.name, device.brand, device.model, device.hwtype
+// device.is_mobile, device.is_tablet, device.is_desktop, etc.
+
+// Or use convenience functions
+const is_mobile = try zigly.device.isMobile(allocator, user_agent);
+const is_desktop = try zigly.device.isDesktop(allocator, user_agent);
+```
+
+#### Cache Purging
+
+Purge cached content by surrogate key:
+
+```zig
+// Hard purge (immediate removal)
+try zigly.purge.purge("my-surrogate-key");
+
+// Soft purge (mark as stale)
+try zigly.purge.softPurge("my-surrogate-key");
+```
+
+#### Runtime Metrics
+
+Monitor compute resource usage:
+
+```zig
+const vcpu_ms = try zigly.runtime.getVcpuMs();
+// Returns the amount of vCPU time used in milliseconds
 ```
 
 ## Deployment to Fastly's platform

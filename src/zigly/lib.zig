@@ -16,6 +16,11 @@ pub const kv = @import("kv.zig");
 pub const backend = @import("backend.zig");
 pub const Backend = backend.Backend;
 pub const DynamicBackend = backend.DynamicBackend;
+pub const acl = @import("acl.zig");
+pub const Acl = acl.Acl;
+pub const purge = @import("purge.zig");
+pub const device = @import("device.zig");
+pub const runtime = @import("runtime.zig");
 
 /// Check that the module is compatible with the current version of the API.
 pub fn compatibilityCheck() !void {
