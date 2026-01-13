@@ -3,26 +3,29 @@
 
 The easiest way to write Fastly Compute services in Zig.
 
-- [](#)
-  - [What is Fastly Compute?](#what-is-fastly-compute)
-  - [What is Zigly?](#what-is-zigly)
-  - [Usage](#usage)
-    - [Example application](#example-application)
-    - [Adding Zigly as a dependency](#adding-zigly-as-a-dependency)
-    - [A minimal WebAssembly program](#a-minimal-webassembly-program)
-    - [Testing Fastly Compute modules](#testing-fastly-compute-modules)
-    - [Using Zigly](#using-zigly)
-      - [Hello world!](#hello-world)
-      - [Inspecting incoming requests](#inspecting-incoming-requests)
-      - [Making HTTP queries](#making-http-queries)
-      - [Cache override](#cache-override)
-      - [Pipes](#pipes)
-    - [Proxying](#proxying)
-    - [Redirects](#redirects)
-    - [Response decompression](#response-decompression)
-      - [Dictionaries](#dictionaries)
-      - [Logging](#logging)
-  - [Deployment to Fastly's platform](#deployment-to-fastlys-platform)
+- [What is Fastly Compute?](#what-is-fastly-compute)
+- [What is Zigly?](#what-is-zigly)
+- [Usage](#usage)
+  - [Example application](#example-application)
+  - [Adding Zigly as a dependency](#adding-zigly-as-a-dependency)
+  - [A minimal WebAssembly program](#a-minimal-webassembly-program)
+  - [Testing Fastly Compute modules](#testing-fastly-compute-modules)
+  - [Using Zigly](#using-zigly)
+    - [Hello world!](#hello-world)
+    - [Inspecting incoming requests](#inspecting-incoming-requests)
+    - [Making HTTP queries](#making-http-queries)
+    - [Cache override](#cache-override)
+    - [Pipes](#pipes)
+  - [Proxying](#proxying)
+  - [Redirects](#redirects)
+  - [Response decompression](#response-decompression)
+    - [Dictionaries](#dictionaries)
+    - [Logging](#logging)
+    - [KV Store](#kv-store)
+    - [Geolocation](#geolocation)
+    - [User Agent Parsing](#user-agent-parsing)
+    - [Dynamic Backends](#dynamic-backends)
+- [Deployment to Fastly's platform](#deployment-to-fastlys-platform)
 
 ## What is Fastly Compute?
 
@@ -36,7 +39,7 @@ Zigly is a library that makes it easy to write Fastly Compute modules in [Zig](h
 
 Beyond the functions exported by the Fastly platform, Zigly will eventually include additional utility functions (cookie manipulation, JWT tokens, tracing...) to make application development as simple as possible.
 
-Zigly is written for Zig 0.15.x and later versions.
+Zigly is written for Zig 0.16.x and later versions.
 
 ## Usage
 
@@ -63,8 +66,21 @@ And the following to your `build.zig` file:
         .target = target,
         .optimize = optimize,
     });
-    exe.root_module.addImport("zigly", zigly.module("zigly"));
-    exe.linkLibrary(zigly.artifact("zigly"));
+
+    const exe_module = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    exe_module.addImport("zigly", zigly.module("zigly"));
+    exe_module.linkLibrary(zigly.artifact("zigly"));
+
+    const exe = b.addExecutable(.{
+        .name = "my_app",
+        .root_module = exe_module,
+    });
+
+    b.installArtifact(exe);
 ```
 
 The `zigly` structure can be imported in your application with:
@@ -132,8 +148,8 @@ Slightly more complicated example:
 const downstream = try zigly.downstream();
 var response = downstream.response;
 
-response.setStatus(201);
-response.headers.set("X-Example", "Header");
+try response.setStatus(201);
+try response.headers.set("X-Example", "Header");
 
 try response.body.writeAll("Partial");
 try response.flush();
@@ -165,9 +181,9 @@ try downstream.proxy("google", "www.google.com");
 Applications can read the body of an incoming requests as well as other informations such as the headers:
 
 ```zig
-const request = downstream.request;
+var request = downstream.request;
 const user_agent = try request.headers.get(allocator, "user-agent");
-if (request.isPost()) {
+if (try request.isPost()) {
     // method is POST, read the body until the end, up to 1000000 bytes
     const body = try request.body.readAll(allocator, 1000000);
 }
@@ -224,7 +240,7 @@ With `pipe()`, the response sent to a client can be a direct copy of another res
 ```zig
 var query = try zigly.http.Request.new("GET", "https://google.com");
 var upstream_response = try query.send("google");
-const downstream = try zigly.downstream();
+var downstream = try zigly.downstream();
 try downstream.response.pipe(&upstream_response, true, true);
 ```
 
@@ -264,8 +280,68 @@ const value = try dict.get(allocator, "key");
 #### Logging
 
 ```zig
-const logger = try zigly.Logger.open("endpoint");
+var logger = try zigly.Logger.open("endpoint");
 try logger.write("Log entry");
+```
+
+#### KV Store
+
+Store and retrieve key-value pairs using Fastly's object store:
+
+```zig
+var store = try zigly.kv.Store.open("my_store");
+const value = try store.getAll("key", allocator, 0);
+
+// Insert or replace a value
+try store.replace("key", "new_value");
+```
+
+#### Geolocation
+
+Get location information about IP addresses:
+
+```zig
+const ip = zigly.geo.Ip{ .ip4 = .{ 8, 8, 8, 8 } };
+var buf: [4096]u8 = undefined;
+const location = try zigly.geo.lookup(allocator, ip, &buf);
+// Access location.value fields: city, country_code, latitude, longitude, etc.
+```
+
+#### User Agent Parsing
+
+Parse user agent strings:
+
+```zig
+var family: [64]u8 = undefined;
+var major: [16]u8 = undefined;
+var minor: [16]u8 = undefined;
+var patch: [16]u8 = undefined;
+const ua = try zigly.UserAgent.parse(user_agent_string, &family, &major, &minor, &patch);
+// Access ua.family, ua.major, ua.minor, ua.patch
+```
+
+#### Dynamic Backends
+
+Register backends dynamically at runtime:
+
+```zig
+const backend_config = zigly.DynamicBackend{
+    .name = "my_backend",
+    .target = "example.com:443",
+    .use_ssl = true,
+    .host_override = "example.com",
+    .sni_hostname = "example.com",
+    .cert_hostname = "example.com",
+    .connect_timeout_ms = 5000,
+    .first_byte_timeout_ms = 15000,
+    .between_bytes_timeout_ms = 10000,
+};
+const backend = try backend_config.register();
+
+// Check backend properties
+const exists = try zigly.Backend.exists("my_backend");
+const is_ssl = try backend.isSsl();
+const port = try backend.getPort();
 ```
 
 ## Deployment to Fastly's platform
