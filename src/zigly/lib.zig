@@ -21,6 +21,11 @@ pub const Acl = acl.Acl;
 pub const purge = @import("purge.zig");
 pub const device = @import("device.zig");
 pub const runtime = @import("runtime.zig");
+pub const cache = @import("cache.zig");
+pub const erl = @import("erl.zig");
+pub const RateLimiter = erl.RateLimiter;
+pub const RateCounter = erl.RateCounter;
+pub const PenaltyBox = erl.PenaltyBox;
 
 /// Check that the module is compatible with the current version of the API.
 pub fn compatibilityCheck() !void {

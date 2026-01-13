@@ -36,4 +36,17 @@ pub fn build(b: *std.Build) !void {
         .root_module = exe_module,
     });
     b.installArtifact(exe);
+
+    const readme_module = b.createModule(.{
+        .root_source_file = b.path("tmp/readme_examples_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    readme_module.addImport("zigly", lib_module);
+
+    const readme_exe = b.addExecutable(.{
+        .name = "readme-examples-test",
+        .root_module = readme_module,
+    });
+    b.installArtifact(readme_exe);
 }

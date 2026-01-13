@@ -29,6 +29,8 @@ The easiest way to write Fastly Compute services in Zig.
     - [Device Detection](#device-detection)
     - [Cache Purging](#cache-purging)
     - [Runtime Metrics](#runtime-metrics)
+    - [Cache Transactions](#cache-transactions)
+    - [Rate Limiting](#rate-limiting)
 - [Deployment to Fastly's platform](#deployment-to-fastlys-platform)
 
 ## What is Fastly Compute?
@@ -214,8 +216,8 @@ try query.headers.set("X-Custom-Header", "Custom value");
 Body content can also be pushed, even as chunks:
 
 ```zig
-try query.body.write("X");
-try query.body.write("Y");
+_ = try query.body.write("X");
+_ = try query.body.write("Y");
 try query.body.close();
 ```
 
@@ -408,6 +410,89 @@ Monitor compute resource usage:
 ```zig
 const vcpu_ms = try zigly.runtime.getVcpuMs();
 // Returns the amount of vCPU time used in milliseconds
+```
+
+#### Cache Transactions
+
+The cache API provides both simple caching and request-collapsing transactions:
+
+```zig
+const cache = zigly.cache;
+
+// Simple cache insert
+var body = try cache.insert("my-cache-key", .{
+    .max_age_ns = cache.secondsToNs(3600),  // 1 hour TTL
+});
+_ = try body.write("Cached content");
+try body.close();
+
+// Simple cache lookup
+var entry = try cache.lookup("my-cache-key", .{});
+const state = try entry.getState();
+if (state.isFound() and state.isUsable()) {
+    var cached_body = try entry.getBody(null);
+    const content = try cached_body.readAll(allocator, 0);
+    // Use cached content
+}
+try entry.close();
+```
+
+For request-collapsing (preventing thundering herd), use transactional lookups:
+
+```zig
+// Transactional lookup - only one request will fetch/generate content
+var tx = try cache.transactionLookup("my-key", .{});
+const tx_state = try tx.getState();
+
+if (tx_state.mustInsertOrUpdate()) {
+    // We won the race - insert new content
+    var result = try tx.insert(.{
+        .max_age_ns = cache.secondsToNs(60),
+    });
+    _ = try result.body.write("Fresh content");
+    try result.body.close();
+} else if (tx_state.isUsable()) {
+    // Content is available
+    var cached_body = try tx.getBody(null);
+    const content = try cached_body.readAll(allocator, 0);
+}
+
+try tx.close();
+```
+
+#### Rate Limiting
+
+Edge Rate Limiting provides rate counters and penalty boxes for traffic control:
+
+```zig
+const erl = zigly.erl;
+
+// Rate counter - track request rates
+const rc = erl.RateCounter.open("my_rate_counter");
+try rc.increment("client-ip-192.168.1.1", 1);
+
+const rate = try rc.lookupRate("client-ip-192.168.1.1", 10);  // 10-second window
+const count = try rc.lookupCount("client-ip-192.168.1.1", 60); // 60-second window
+
+// Penalty box - block bad actors
+const pb = erl.PenaltyBox.open("my_penalty_box");
+if (try pb.has("bad-actor")) {
+    // Client is in penalty box, reject request
+}
+try pb.add("bad-actor", 300);  // Block for 5 minutes
+
+// Combined rate limiter
+const limiter = erl.RateLimiter.init(.{
+    .rate_counter = "my_rate_counter",
+    .penalty_box = "my_penalty_box",
+    .window_seconds = 10,
+    .limit = 100,           // 100 requests per 10 seconds
+    .ttl_seconds = 300,     // 5 minute penalty
+});
+
+if (!try limiter.isAllowed("client-id", 1)) {
+    // Rate limited - reject request
+}
 ```
 
 ## Deployment to Fastly's platform
