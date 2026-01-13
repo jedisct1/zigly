@@ -13,6 +13,9 @@ pub const http = @import("http.zig");
 pub const downstream = http.downstream;
 pub const geo = @import("geo.zig");
 pub const kv = @import("kv.zig");
+pub const backend = @import("backend.zig");
+pub const Backend = backend.Backend;
+pub const DynamicBackend = backend.DynamicBackend;
 
 /// Check that the module is compatible with the current version of the API.
 pub fn compatibilityCheck() !void {
