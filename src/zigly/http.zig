@@ -156,7 +156,7 @@ const RequestHeaders = struct {
     }
 };
 
-const Body = struct {
+pub const Body = struct {
     handle: wasm.BodyHandle,
 
     /// Possibly partial read of the body content.
@@ -549,8 +549,10 @@ const ResponseHeaders = struct {
         var value_buf = try allocator.alloc(u8, value_len_max);
         var value_len: usize = undefined;
         while (true) {
-            const ret = wasm.FastlyHttpResp.header_value_get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, &value_len);
-            if (ret) break else |err| {
+            const ret = fastly(wasm.FastlyHttpResp.header_value_get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, &value_len));
+            if (ret) {
+                break;
+            } else |err| {
                 if (err != FastlyError.FastlyBufferTooSmall) {
                     return err;
                 }
@@ -562,7 +564,7 @@ const ResponseHeaders = struct {
     }
 
     /// Return all the values for a header.
-    pub fn getAll(self: RequestHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
+    pub fn getAll(self: ResponseHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
         var values_list = ArrayList([]const u8){};
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
