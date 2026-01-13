@@ -9,6 +9,8 @@ const Dictionary = zigly.Dictionary;
 const UserAgent = zigly.UserAgent;
 const Request = zigly.http.Request;
 const Logger = zigly.Logger;
+const Backend = zigly.Backend;
+const DynamicBackend = zigly.DynamicBackend;
 
 fn start() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
@@ -81,24 +83,62 @@ fn start() !void {
         try request.logApacheCombined(arena.allocator(), "access_log", 404, 0);
     }
 
+    // Test dynamic backend registration (must be before finishing downstream response)
     {
+        std.debug.print("Testing dynamic backends...\n", .{});
+
+        // Register a dynamic backend to httpbin.org
+        const dynamic_backend = DynamicBackend{
+            .name = "httpbin",
+            .target = "httpbin.org:443",
+            .use_ssl = true,
+            .host_override = "httpbin.org",
+            .sni_hostname = "httpbin.org",
+            .cert_hostname = "httpbin.org",
+            .connect_timeout_ms = 5000,
+            .first_byte_timeout_ms = 15000,
+            .between_bytes_timeout_ms = 10000,
+        };
+
+        const dyn_backend = try dynamic_backend.register();
+        std.debug.print("Dynamic backend registered: {s}\n", .{dyn_backend.name});
+
+        // Check if backend exists
+        const exists = try Backend.exists("httpbin");
+        std.debug.print("Backend exists: {}\n", .{exists});
+
+        // Check if backend is dynamic
+        const is_dynamic = try dyn_backend.isDynamic();
+        std.debug.print("Backend is dynamic: {}\n", .{is_dynamic});
+
+        // Check if backend uses SSL
+        const is_ssl = try dyn_backend.isSsl();
+        std.debug.print("Backend uses SSL: {}\n", .{is_ssl});
+
+        // Get backend port
+        const port = try dyn_backend.getPort();
+        std.debug.print("Backend port: {}\n", .{port});
+
+        // Make a request using the dynamic backend
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
 
-        var response = downstream.response;
-        try response.headers.set("X-MyHeader", "XYZ");
+        var query = try Request.new("GET", "https://httpbin.org/get");
+        var dyn_response = try query.send("httpbin");
+        const status = try dyn_response.getStatus();
+        std.debug.print("Response status from dynamic backend: {}\n", .{status});
 
-        try response.setStatus(205);
-        try response.body.writeAll("OK!\n");
-        try response.finish();
+        const body = try dyn_response.body.readAll(arena.allocator(), 1024);
+        std.debug.print("Response body (first 200 chars): {s}\n", .{body[0..@min(body.len, 200)]});
     }
 
+    // Final response to client
     {
-        var arena = ArenaAllocator.init(allocator);
-        defer arena.deinit();
-        var query = try Request.new("GET", "https://www.google.com");
-        var upstream_response = try query.send("google");
-        try downstream.response.pipe(&upstream_response, false, false);
+        var response = downstream.response;
+        try response.headers.set("X-MyHeader", "XYZ");
+        try response.setStatus(200);
+        try response.body.writeAll("All tests passed!\n");
+        try response.finish();
     }
 }
 
