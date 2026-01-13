@@ -3,8 +3,8 @@ const mem = std.mem;
 const Allocator = mem.Allocator;
 
 const wasm = @import("wasm.zig");
-const fastly = @import("errors.zig").fastly;
-const errors = fastly.errors;
+const errors = @import("errors.zig");
+const fastly = errors.fastly;
 const FastlyError = errors.FastlyError;
 
 pub const Dictionary = struct {
@@ -23,8 +23,10 @@ pub const Dictionary = struct {
         var value_buf = try allocator.alloc(u8, value_len_max);
         var value_len: usize = undefined;
         while (true) {
-            const ret = wasm.FastlyDictionary.get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, &value_len);
-            if (ret) break else |err| {
+            const ret = fastly(wasm.FastlyDictionary.get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, &value_len));
+            if (ret) {
+                break;
+            } else |err| {
                 if (err != FastlyError.FastlyBufferTooSmall) {
                     return err;
                 }

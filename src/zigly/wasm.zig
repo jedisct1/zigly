@@ -1401,31 +1401,29 @@ pub const FastlyHttpResp = struct {
     ) callconv(.c) FastlyStatus;
 };
 
-// ---------------------- Module: [fastly_kv] ----------------------
+// ---------------------- Module: [fastly_object_store] ----------------------
 
-pub const KvStoreHandle = WasiHandle;
-
+/// Deprecated Object Store API - use for compatibility with older code.
+/// For new code, consider using the newer fastly_kv_store API.
 pub const FastlyKv = struct {
-    pub extern "fastly_kv" fn open(
+    pub extern "fastly_object_store" fn open(
         name_ptr: WasiPtr(Char8),
         name_len: usize,
-        result_ptr: WasiMutPtr(KvStoreHandle),
+        result_ptr: WasiMutPtr(ObjectStoreHandle),
     ) callconv(.c) FastlyStatus;
 
-    pub extern "fastly_kv" fn lookup(
-        store: KvStoreHandle,
-        key_ptr: WasiPtr(u8),
+    pub extern "fastly_object_store" fn lookup(
+        store: ObjectStoreHandle,
+        key_ptr: WasiPtr(Char8),
         key_len: usize,
-        opt_body_handle_out: WasiMutPtr(BodyHandle),
+        body_handle_out: WasiMutPtr(BodyHandle),
     ) callconv(.c) FastlyStatus;
 
-    pub extern "fastly_kv" fn insert(
-        store: KvStoreHandle,
-        key_ptr: WasiPtr(u8),
+    pub extern "fastly_object_store" fn insert(
+        store: ObjectStoreHandle,
+        key_ptr: WasiPtr(Char8),
         key_len: usize,
         body_handle: BodyHandle,
-        max_age: u32,
-        result_ptr: WasiMutPtr(Inserted),
     ) callconv(.c) FastlyStatus;
 };
 
