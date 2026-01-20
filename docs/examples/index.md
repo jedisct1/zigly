@@ -22,7 +22,7 @@ Redirects users to country-specific sites based on their IP geolocation. Demonst
 
 ## Running Examples
 
-All examples are in `tmp/examples/` and can be built with:
+All examples are in `examples/` and can be built with:
 
 ```bash
 zig build -Doptimize=ReleaseSmall
@@ -31,8 +31,8 @@ zig build -Doptimize=ReleaseSmall
 Test with a local emulator ([Viceroy](https://github.com/fastly/Viceroy) or [Fastlike](https://github.com/avidal/fastlike)):
 
 ```bash
-cd tmp/examples
-viceroy -C fastly.toml ../../zig-out/bin/<example>.wasm
+cd examples
+viceroy -C fastly.toml ../zig-out/bin/<example>.wasm
 ```
 
 Then test with curl:

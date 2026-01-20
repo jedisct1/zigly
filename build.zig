@@ -36,4 +36,33 @@ pub fn build(b: *std.Build) !void {
         .root_module = exe_module,
     });
     b.installArtifact(exe);
+
+    // Example builds
+    const examples = [_][]const u8{
+        "simple_proxy",
+        "api_gateway",
+        "rate_limiter",
+        "geo_redirect",
+    };
+
+    // Zigly module for examples
+    const zigly_module = b.addModule("zigly", .{
+        .root_source_file = b.path("src/zigly.zig"),
+    });
+
+    for (examples) |example| {
+        const example_path = b.fmt("examples/{s}.zig", .{example});
+        const example_module = b.createModule(.{
+            .root_source_file = b.path(example_path),
+            .target = target,
+            .optimize = optimize,
+        });
+        example_module.addImport("zigly", zigly_module);
+
+        const example_exe = b.addExecutable(.{
+            .name = example,
+            .root_module = example_module,
+        });
+        b.installArtifact(example_exe);
+    }
 }
