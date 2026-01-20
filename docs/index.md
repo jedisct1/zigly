@@ -2,6 +2,12 @@
 
 Zigly is a Zig library for building [Fastly Compute](https://www.fastly.com/products/edge-compute) services. It provides high-level bindings for Fastly's edge computing platform, targeting WebAssembly.
 
+## Why Zig?
+
+Fastly Compute bills based on execution time and memory usage. The Zig compiler produces WebAssembly modules that are exceptionally small, fast, and memory-efficient—often significantly smaller than equivalent Rust code, and orders of magnitude smaller than JavaScript bundles.
+
+This translates directly to lower costs: smaller binaries mean faster cold starts, less memory overhead, and reduced execution time. If you're running edge compute at scale, Zig can meaningfully reduce your Fastly bill while providing predictable, low-latency performance.
+
 ## Quick Example
 
 ```zig
