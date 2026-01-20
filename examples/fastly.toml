@@ -1,0 +1,37 @@
+manifest_version = 3
+name = "zigly-examples"
+description = "Zigly example services"
+language = "other"
+
+[scripts]
+build = "echo 'Build using zig build from project root'"
+
+[local_server]
+  [local_server.backends]
+    [local_server.backends.origin]
+    url = "https://httpbin.org"
+
+    [local_server.backends.users_api]
+    url = "https://httpbin.org"
+
+    [local_server.backends.products_api]
+    url = "https://httpbin.org"
+
+    [local_server.backends.cdn]
+    url = "https://httpbin.org"
+
+  [local_server.geolocation]
+    [local_server.geolocation.addresses]
+      [local_server.geolocation.addresses."127.0.0.1"]
+      as_name = "Test ISP"
+      city = "San Francisco"
+      country_code = "US"
+      country_code3 = "USA"
+      country_name = "United States"
+      region = "CA"
+      latitude = 37.7749
+      longitude = -122.4194
+      utc_offset = -800
+      conn_speed = "broadband"
+      conn_type = "wired"
+      continent = "NA"
