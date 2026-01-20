@@ -9,7 +9,8 @@ pub fn build(b: *std.Build) !void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
-    _ = b.addModule("zigly", .{
+    // Zigly module for external packages and examples
+    const zigly_module = b.addModule("zigly", .{
         .root_source_file = b.path("src/zigly.zig"),
     });
 
@@ -44,11 +45,6 @@ pub fn build(b: *std.Build) !void {
         "rate_limiter",
         "geo_redirect",
     };
-
-    // Zigly module for examples
-    const zigly_module = b.addModule("zigly", .{
-        .root_source_file = b.path("src/zigly.zig"),
-    });
 
     for (examples) |example| {
         const example_path = b.fmt("examples/{s}.zig", .{example});

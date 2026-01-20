@@ -5,7 +5,7 @@
 
     .dependencies = .{
         .zigly = .{
-            .path = "..",
+            .path = "../..",
         },
     },
     .paths = .{
