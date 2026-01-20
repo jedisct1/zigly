@@ -161,11 +161,64 @@ try request.setMethod("PUT");
 pub fn getUriString(self: Request, uri: []u8) ![]u8
 ```
 
-Copy the URI to the provided buffer.
+Copy the full URI to the provided buffer. The URI includes scheme and host when returned by Fastly's runtime.
 
 ```zig
 var buf: [4096]u8 = undefined;
-const uri = try request.getUriString(&buf);  // "/path?query=value"
+const uri = try request.getUriString(&buf);  // "http://example.com/path?query=value"
+```
+
+#### getUri
+
+```zig
+pub fn getUri(self: Request, uri_buf: []u8) !std.Uri
+```
+
+Parse the request URI into a `std.Uri` struct with all components separated.
+
+```zig
+var buf: [4096]u8 = undefined;
+const uri = try request.getUri(&buf);
+// uri.scheme - "http" or "https"
+// uri.host   - Host component (optional)
+// uri.path   - Path component
+// uri.query  - Query string (optional)
+// uri.port   - Port number (optional)
+```
+
+#### getPath
+
+```zig
+pub fn getPath(self: Request, uri_buf: []u8) ![]const u8
+```
+
+Extract just the path from the request URI, without query string or fragment. This is the most common operation for routing.
+
+```zig
+var buf: [4096]u8 = undefined;
+const path = try request.getPath(&buf);  // "/api/users"
+```
+
+Example for routing:
+```zig
+const path = try downstream.request.getPath(&buf);
+if (std.mem.startsWith(u8, path, "/api/")) {
+    try downstream.proxy("api_backend", null);
+}
+```
+
+#### getPathAndQuery
+
+```zig
+pub fn getPathAndQuery(self: Request, uri_buf: []u8, out_buf: []u8) ![]const u8
+```
+
+Extract the path with query string (but without fragment). Useful when you need to forward the full request path including parameters.
+
+```zig
+var uri_buf: [4096]u8 = undefined;
+var out_buf: [4096]u8 = undefined;
+const path_query = try request.getPathAndQuery(&uri_buf, &out_buf);  // "/api/users?id=123"
 ```
 
 #### setUriString

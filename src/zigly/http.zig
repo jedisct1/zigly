@@ -265,6 +265,56 @@ pub const Request = struct {
         return uri[0..uri_len];
     }
 
+    /// Parse the request URI into a std.Uri struct.
+    /// Returns a Uri with all components (scheme, host, path, query, etc.).
+    /// The Uri's slices point into the provided buffer.
+    pub fn getUri(self: Request, uri_buf: []u8) !std.Uri {
+        const uri_str = try self.getUriString(uri_buf);
+        return std.Uri.parse(uri_str) catch {
+            // If parsing fails (e.g., no scheme), treat as path-only
+            return std.Uri{
+                .scheme = "",
+                .path = .{ .percent_encoded = uri_str },
+            };
+        };
+    }
+
+    /// Extract the path from the request URI.
+    /// Returns just the path portion without query string or fragment.
+    /// Example: "https://example.com/api/users?id=1" returns "/api/users"
+    pub fn getPath(self: Request, uri_buf: []u8) ![]const u8 {
+        const uri = try self.getUri(uri_buf);
+        return switch (uri.path) {
+            .raw => |raw| raw,
+            .percent_encoded => |encoded| encoded,
+        };
+    }
+
+    /// Extract the path and query string from the request URI.
+    /// Returns path with query string but without fragment.
+    /// Example: "https://example.com/api/users?id=1#section" returns "/api/users?id=1"
+    pub fn getPathAndQuery(self: Request, uri_buf: []u8, out_buf: []u8) ![]const u8 {
+        const uri = try self.getUri(uri_buf);
+        const path = switch (uri.path) {
+            .raw => |raw| raw,
+            .percent_encoded => |encoded| encoded,
+        };
+
+        if (uri.query) |query| {
+            const query_str = switch (query) {
+                .raw => |raw| raw,
+                .percent_encoded => |encoded| encoded,
+            };
+            const total_len = path.len + 1 + query_str.len;
+            if (total_len > out_buf.len) return FastlyError.FastlyBufferTooSmall;
+            @memcpy(out_buf[0..path.len], path);
+            out_buf[path.len] = '?';
+            @memcpy(out_buf[path.len + 1 ..][0..query_str.len], query_str);
+            return out_buf[0..total_len];
+        }
+        return path;
+    }
+
     /// Set the request URI.
     pub fn setUriString(self: Request, uri: []const u8) !void {
         try fastly(wasm.FastlyHttpReq.uri_set(self.headers.handle, uri.ptr, uri.len));

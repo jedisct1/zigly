@@ -11,20 +11,9 @@ const zigly = @import("zigly");
 fn start() !void {
     var downstream = try zigly.downstream();
 
-    // Get the request URI and extract the path
+    // Get the request path
     var uri_buf: [4096]u8 = undefined;
-    const full_uri = try downstream.request.getUriString(&uri_buf);
-
-    // Extract the path from the URI (find path after scheme://host)
-    const path = blk: {
-        if (std.mem.indexOf(u8, full_uri, "://")) |scheme_end| {
-            const after_scheme = full_uri[scheme_end + 3 ..];
-            if (std.mem.indexOfScalar(u8, after_scheme, '/')) |path_start| {
-                break :blk after_scheme[path_start..];
-            }
-        }
-        break :blk full_uri;
-    };
+    const path = try downstream.request.getPath(&uri_buf);
 
     // Route based on path prefix
     if (std.mem.startsWith(u8, path, "/api/users")) {
@@ -51,12 +40,11 @@ pub export fn _start() callconv(.c) void {
 
 ## How It Works
 
-1. Extract the full URI from the request using `getUriString()`
-2. Parse out just the path component (the URI includes scheme and host)
-3. Match the path against known prefixes
-4. Route to the appropriate backend or return a 404 response
+1. Extract the path from the request using `getPath()` - this handles the full URI format automatically
+2. Match the path against known prefixes
+3. Route to the appropriate backend or return a 404 response
 
-The path extraction handles the full URI format returned by Fastly's runtime: `http://host:port/path`.
+The `getPath()` helper extracts just the path component from the full URI returned by Fastly's runtime (`http://host:port/path`).
 
 ## Backend Configuration
 

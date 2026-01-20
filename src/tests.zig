@@ -62,6 +62,33 @@ fn start() !void {
         _ = try request.isPost();
     }
 
+    // Test URI helpers
+    {
+        var uri_buf: [4096]u8 = undefined;
+
+        // Test getUriString (already exists, just verify it works)
+        const full_uri = try request.getUriString(&uri_buf);
+        std.debug.print("Full URI: [{s}]\n", .{full_uri});
+
+        // Test getUri - parses into std.Uri components
+        const uri = try request.getUri(&uri_buf);
+        std.debug.print("URI scheme: [{s}]\n", .{uri.scheme});
+        const path_str = switch (uri.path) {
+            .raw => |r| r,
+            .percent_encoded => |e| e,
+        };
+        std.debug.print("URI path: [{s}]\n", .{path_str});
+
+        // Test getPath - extracts just the path
+        const path = try request.getPath(&uri_buf);
+        std.debug.print("Path only: [{s}]\n", .{path});
+
+        // Test getPathAndQuery
+        var out_buf: [4096]u8 = undefined;
+        const path_query = try request.getPathAndQuery(&uri_buf, &out_buf);
+        std.debug.print("Path and query: [{s}]\n", .{path_query});
+    }
+
     google_test: {
         var arena = ArenaAllocator.init(allocator);
         defer arena.deinit();
