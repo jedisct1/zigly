@@ -24,9 +24,9 @@ The connection from the client to your edge service.
 
 ### Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `request` | `Request` | The incoming HTTP request |
+| Field      | Type               | Description               |
+| ---------- | ------------------ | ------------------------- |
+| `request`  | `Request`          | The incoming HTTP request |
 | `response` | `OutgoingResponse` | The response to send back |
 
 ### Methods
@@ -82,10 +82,10 @@ An HTTP request, either from the client or created programmatically.
 
 ### Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field     | Type             | Description     |
+| --------- | ---------------- | --------------- |
 | `headers` | `RequestHeaders` | Request headers |
-| `body` | `Body` | Request body |
+| `body`    | `Body`           | Request body    |
 
 ### Static Methods
 
@@ -186,6 +186,39 @@ const uri = try request.getUri(&buf);
 // uri.port   - Port number (optional)
 ```
 
+**Example: Protocol-based routing**
+```zig
+var uri_buf: [4096]u8 = undefined;
+const uri = try downstream.request.getUri(&uri_buf);
+
+// Redirect HTTP to HTTPS
+if (std.mem.eql(u8, uri.scheme, "http")) {
+    var redirect_buf: [4096]u8 = undefined;
+    const https_url = try std.fmt.bufPrint(&redirect_buf, "https://{s}{s}", .{
+        uri.host.?.percent_encoded,
+        uri.path.percent_encoded,
+    });
+    try downstream.redirect(301, https_url);
+    return;
+}
+```
+
+**Example: Port-based routing**
+
+```zig
+var uri_buf: [4096]u8 = undefined;
+const uri = try downstream.request.getUri(&uri_buf);
+
+// Route admin traffic on port 8443 to admin backend
+if (uri.port) |port| {
+    if (port == 8443) {
+        try downstream.proxy("admin_backend", null);
+        return;
+    }
+}
+try downstream.proxy("public_backend", null);
+```
+
 #### getPath
 
 ```zig
@@ -199,12 +232,56 @@ var buf: [4096]u8 = undefined;
 const path = try request.getPath(&buf);  // "/api/users"
 ```
 
-Example for routing:
+**Example: API gateway routing**
+
 ```zig
-const path = try downstream.request.getPath(&buf);
-if (std.mem.startsWith(u8, path, "/api/")) {
-    try downstream.proxy("api_backend", null);
+var uri_buf: [4096]u8 = undefined;
+const path = try downstream.request.getPath(&uri_buf);
+
+if (std.mem.startsWith(u8, path, "/api/users")) {
+    try downstream.proxy("users_service", null);
+} else if (std.mem.startsWith(u8, path, "/api/orders")) {
+    try downstream.proxy("orders_service", null);
+} else if (std.mem.startsWith(u8, path, "/static/")) {
+    try downstream.proxy("cdn", null);
+} else {
+    try downstream.response.setStatus(404);
+    try downstream.response.body.writeAll("Not found");
+    try downstream.response.finish();
 }
+```
+
+**Example: Blocking sensitive paths**
+
+```zig
+var uri_buf: [4096]u8 = undefined;
+const path = try downstream.request.getPath(&uri_buf);
+
+// Block access to admin endpoints from public internet
+const blocked_paths = [_][]const u8{ "/admin", "/.env", "/debug", "/metrics" };
+for (blocked_paths) |blocked| {
+    if (std.mem.startsWith(u8, path, blocked)) {
+        try downstream.response.setStatus(403);
+        try downstream.response.body.writeAll("Forbidden");
+        try downstream.response.finish();
+        return;
+    }
+}
+try downstream.proxy("origin", null);
+```
+
+**Example: Path rewriting**
+
+```zig
+var uri_buf: [4096]u8 = undefined;
+const path = try downstream.request.getPath(&uri_buf);
+
+// Rewrite /v2/api/* to /api/* for the backend
+if (std.mem.startsWith(u8, path, "/v2/api/")) {
+    const new_path = path[3..];  // Strip "/v2"
+    try downstream.request.setUriString(new_path);
+}
+try downstream.proxy("api_backend", null);
 ```
 
 #### getPathAndQuery
@@ -219,6 +296,59 @@ Extract the path with query string (but without fragment). Useful when you need 
 var uri_buf: [4096]u8 = undefined;
 var out_buf: [4096]u8 = undefined;
 const path_query = try request.getPathAndQuery(&uri_buf, &out_buf);  // "/api/users?id=123"
+```
+
+**Example: Logging requests with query parameters**
+```zig
+var uri_buf: [4096]u8 = undefined;
+var out_buf: [4096]u8 = undefined;
+const path_query = try downstream.request.getPathAndQuery(&uri_buf, &out_buf);
+
+var method_buf: [16]u8 = undefined;
+const method = try downstream.request.getMethod(&method_buf);
+
+// Log the full request for debugging
+std.debug.print("{s} {s}\n", .{ method, path_query });
+```
+
+**Example: Cache key generation**
+
+```zig
+var uri_buf: [4096]u8 = undefined;
+var out_buf: [4096]u8 = undefined;
+const path_query = try downstream.request.getPathAndQuery(&uri_buf, &out_buf);
+
+// Use path + query as cache key for GET requests
+if (try downstream.request.isGet()) {
+    var entry = cache.lookup(path_query, .{}) catch null;
+    if (entry) |*e| {
+        defer e.close() catch {};
+        const state = try e.getState();
+        if (state.isUsable()) {
+            // Serve from cache
+            var body = try e.getBody(null);
+            try downstream.response.setStatus(200);
+            // ... stream cached body to response
+            return;
+        }
+    }
+}
+```
+
+**Example: Forwarding to upstream with original query string**
+
+```zig
+var uri_buf: [4096]u8 = undefined;
+var out_buf: [4096]u8 = undefined;
+const path_query = try downstream.request.getPathAndQuery(&uri_buf, &out_buf);
+
+// Create a new request to upstream, preserving the original path and query
+var upstream_url_buf: [4096]u8 = undefined;
+const upstream_url = try std.fmt.bufPrint(&upstream_url_buf, "https://api.internal.example.com{s}", .{path_query});
+
+var req = try Request.new("GET", upstream_url);
+var resp = try req.send("internal_api");
+try downstream.response.pipe(&resp, true, true);
 ```
 
 #### setUriString
@@ -282,13 +412,13 @@ try request.setCachingPolicy(.{
 
 **CachingPolicy fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `no_cache` | `bool` | Bypass cache (default: false) |
-| `ttl` | `?u32` | TTL in seconds |
-| `serve_stale` | `?u32` | Stale-while-revalidate time in seconds |
-| `pci` | `bool` | Enable PCI restrictions |
-| `surrogate_key` | `[]const u8` | Surrogate key for purging |
+| Field           | Type         | Description                            |
+| --------------- | ------------ | -------------------------------------- |
+| `no_cache`      | `bool`       | Bypass cache (default: false)          |
+| `ttl`           | `?u32`       | TTL in seconds                         |
+| `serve_stale`   | `?u32`       | Stale-while-revalidate time in seconds |
+| `pci`           | `bool`       | Enable PCI restrictions                |
+| `surrogate_key` | `[]const u8` | Surrogate key for purging              |
 
 #### setAutoDecompressResponse
 
@@ -490,10 +620,10 @@ The response sent back to the client.
 
 ### Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field     | Type              | Description      |
+| --------- | ----------------- | ---------------- |
 | `headers` | `ResponseHeaders` | Response headers |
-| `body` | `Body` | Response body |
+| `body`    | `Body`            | Response body    |
 
 ### Methods
 
@@ -570,10 +700,10 @@ Response from a backend.
 
 ### Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field     | Type              | Description      |
+| --------- | ----------------- | ---------------- |
 | `headers` | `ResponseHeaders` | Response headers |
-| `body` | `Body` | Response body |
+| `body`    | `Body`            | Response body    |
 
 ### Methods
 
@@ -601,9 +731,9 @@ Represents a URL query parameter.
 
 ### Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `key` | `[]const u8` | Parameter name |
+| Field   | Type         | Description                   |
+| ------- | ------------ | ----------------------------- |
+| `key`   | `[]const u8` | Parameter name                |
 | `value` | `[]const u8` | Parameter value (URL-decoded) |
 
 ---
