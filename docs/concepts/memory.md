@@ -239,7 +239,7 @@ The leak detection only works locally (with `std.debug.print`), not in productio
 const std = @import("std");
 const zigly = @import("zigly");
 
-fn start() !void {
+pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
@@ -263,11 +263,7 @@ fn start() !void {
     try downstream.response.setStatus(200);
     try downstream.response.finish();
 }
-// Arena frees everything
-
-pub export fn _start() callconv(.c) void {
-    start() catch {};
-}
+// Arena frees everything when main() returns
 ```
 
 ## Next Steps

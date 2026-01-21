@@ -5,7 +5,7 @@ const std = @import("std");
 const zigly = @import("zigly");
 const geo = zigly.geo;
 
-fn start() !void {
+pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -23,7 +23,7 @@ fn start() !void {
     };
     const country = result.value.country_code;
 
-    // Get current path using the URI helper
+    // Get current path
     var uri_buf: [4096]u8 = undefined;
     const path = try downstream.request.getPath(&uri_buf);
 
@@ -55,10 +55,4 @@ fn start() !void {
         // Default: proxy to origin without redirect
         try downstream.proxy("origin", null);
     }
-}
-
-pub export fn _start() callconv(.c) void {
-    start() catch |err| {
-        std.debug.print("Error: {}\n", .{err});
-    };
 }

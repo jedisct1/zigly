@@ -8,7 +8,7 @@ Routes requests to different backends based on the URL path prefix. Useful for m
 const std = @import("std");
 const zigly = @import("zigly");
 
-fn start() !void {
+pub fn main() !void {
     var downstream = try zigly.downstream();
 
     // Get the request path
@@ -29,12 +29,6 @@ fn start() !void {
         try downstream.response.body.writeAll("{\"error\":\"Not found\"}");
         try downstream.response.finish();
     }
-}
-
-pub export fn _start() callconv(.c) void {
-    start() catch |err| {
-        std.debug.print("Error: {}\n", .{err});
-    };
 }
 ```
 
@@ -82,7 +76,7 @@ curl http://127.0.0.1:7676/unknown
 // Strip /api/v2 prefix before proxying
 if (std.mem.startsWith(u8, path, "/api/v2/")) {
     const new_path = path[7..]; // Remove "/api/v2"
-    try downstream.request.setUri(new_path);
+    try downstream.request.setUriString(new_path);
     try downstream.proxy("v2_backend", null);
 }
 ```

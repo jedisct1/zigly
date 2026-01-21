@@ -5,7 +5,7 @@
 const std = @import("std");
 const zigly = @import("zigly");
 
-fn start() !void {
+pub fn main() !void {
     var downstream = try zigly.downstream();
 
     var uri_buf: [4096]u8 = undefined;
@@ -56,10 +56,4 @@ fn start() !void {
     }
 
     try downstream.proxy("origin", null);
-}
-
-pub export fn _start() callconv(.c) void {
-    start() catch |err| {
-        std.debug.print("Error: {}\n", .{err});
-    };
 }

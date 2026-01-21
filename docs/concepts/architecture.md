@@ -7,31 +7,26 @@ This document explains how Zigly maps to Fastly's Compute runtime and the reques
 Fastly Compute runs your code at the edge in a WebAssembly sandbox. When a request arrives at a Fastly edge server:
 
 1. Fastly creates a new WebAssembly instance
-2. Calls your `_start` function
-3. Your code processes the request
+2. Calls the `_start` entry point (generated automatically by Zig)
+3. Your `main()` function processes the request
 4. The instance is terminated after the response is sent
 
 Each request gets a fresh instance. There's no shared state between requests unless you use external storage (KV stores, caching).
 
 ## Entry Point
 
-Your service needs a `_start` export function:
+Your service needs a `pub fn main()` function:
 
 ```zig
-pub export fn _start() callconv(.c) void {
-    main() catch |err| {
-        // Handle error
-        std.debug.print("Error: {}\n", .{err});
-    };
-}
+const zigly = @import("zigly");
 
-fn main() !void {
+pub fn main() !void {
     var downstream = try zigly.downstream();
     // Process request...
 }
 ```
 
-The `_start` function must have `callconv(.c)` to be callable from the WebAssembly runtime.
+Zig automatically generates the WASI `_start` entry point when targeting `wasm32-wasi`. Your `main()` function can return errors, which Zig handles appropriately.
 
 ## Handle-Based API
 

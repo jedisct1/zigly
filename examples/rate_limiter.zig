@@ -5,7 +5,7 @@ const std = @import("std");
 const zigly = @import("zigly");
 const erl = zigly.erl;
 
-fn start() !void {
+pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -63,10 +63,4 @@ fn start() !void {
 
     // Request allowed, proxy to origin
     try downstream.proxy("origin", null);
-}
-
-pub export fn _start() callconv(.c) void {
-    start() catch |err| {
-        std.debug.print("Error: {}\n", .{err});
-    };
 }

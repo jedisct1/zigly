@@ -1,6 +1,6 @@
 # Rate Limiter
 
-Implements IP-based rate limiting at the edge using Fastly's Edge Rate Limiting (ERL) primitives. Blocks abusive clients before they reach your origin.
+Implements IP and path-based rate limiting at the edge using Fastly's Edge Rate Limiting (ERL) primitives. Blocks abusive clients before they reach your origin, with different limits for different endpoints.
 
 ## Source Code
 
@@ -9,7 +9,7 @@ const std = @import("std");
 const zigly = @import("zigly");
 const erl = zigly.erl;
 
-fn start() !void {
+pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -20,21 +20,47 @@ fn start() !void {
     const client_ip = try zigly.http.Downstream.getClientIpAddr();
     const ip_str = try client_ip.print(allocator);
 
-    // Configure rate limiter: 100 requests per minute, block for 5 minutes
-    const limiter = erl.RateLimiter.init(.{
-        .rate_counter = "ip_requests",
-        .penalty_box = "blocked_ips",
-        .window_seconds = 60,
+    // Get request path for endpoint-specific rate limiting
+    var uri_buf: [4096]u8 = undefined;
+    const path = try downstream.request.getPath(&uri_buf);
+
+    // Choose rate limit based on endpoint sensitivity
+    const config: struct { counter: []const u8, limit: u32, window: u32 } = if (std.mem.startsWith(u8, path, "/api/auth/") or
+        std.mem.startsWith(u8, path, "/api/login"))
+    .{
+        // Strict limits for auth endpoints: 10 requests per minute
+        .counter = "auth_requests",
+        .limit = 10,
+        .window = 60,
+    } else if (std.mem.startsWith(u8, path, "/api/")) .{
+        // Moderate limits for API: 100 requests per minute
+        .counter = "api_requests",
         .limit = 100,
+        .window = 60,
+    } else .{
+        // Relaxed limits for static content: 500 requests per minute
+        .counter = "general_requests",
+        .limit = 500,
+        .window = 60,
+    };
+
+    // Build rate limiter key combining IP and endpoint category
+    const key = try std.fmt.allocPrint(allocator, "{s}:{s}", .{ ip_str, config.counter });
+
+    const limiter = erl.RateLimiter.init(.{
+        .rate_counter = config.counter,
+        .penalty_box = "blocked_ips",
+        .window_seconds = config.window,
+        .limit = config.limit,
         .ttl_seconds = 300,
     });
 
     // Check rate limit
-    if (try limiter.isBlocked(ip_str, 1)) {
+    if (try limiter.isBlocked(key, 1)) {
         try downstream.response.setStatus(429);
         try downstream.response.headers.set("Content-Type", "application/json");
-        try downstream.response.headers.set("Retry-After", "300");
-        try downstream.response.body.writeAll("{\"error\":\"Rate limit exceeded\",\"retry_after\":300}");
+        try downstream.response.headers.set("Retry-After", "60");
+        try downstream.response.body.writeAll("{\"error\":\"Rate limit exceeded\",\"retry_after\":60}");
         try downstream.response.finish();
         return;
     }
@@ -42,36 +68,29 @@ fn start() !void {
     // Request allowed, proxy to origin
     try downstream.proxy("origin", null);
 }
-
-pub export fn _start() callconv(.c) void {
-    start() catch |err| {
-        std.debug.print("Error: {}\n", .{err});
-    };
-}
 ```
 
 ## How It Works
 
 1. Get the client IP address using `Downstream.getClientIpAddr()`
-2. Convert the IP to a string for use as a rate limit key
-3. Configure a `RateLimiter` with:
-   - `rate_counter`: Name of the counter to track requests
-   - `penalty_box`: Name of the penalty box for blocked IPs
-   - `window_seconds`: Time window for counting requests (60 seconds)
-   - `limit`: Maximum requests per window (100)
-   - `ttl_seconds`: How long to block an IP after exceeding the limit (300 seconds)
-4. Check if the IP is blocked using `isBlocked()`, which:
-   - Returns `true` if the IP is already in the penalty box
-   - Increments the rate counter
-   - Adds the IP to the penalty box if it exceeds the limit
-5. Return 429 with `Retry-After` header if blocked, otherwise proxy the request
+2. Extract the request path using `getPath()` for endpoint-specific limits
+3. Select rate limit configuration based on path:
+   - Auth endpoints (`/api/auth/`, `/api/login`): 10 requests per minute
+   - API endpoints (`/api/`): 100 requests per minute
+   - General content: 500 requests per minute
+4. Build a composite key combining IP and endpoint category
+5. Configure a `RateLimiter` with the selected limits
+6. Check if the request should be blocked using `isBlocked()`
+7. Return 429 with `Retry-After` header if blocked, otherwise proxy the request
 
 ## ERL Configuration
 
 In `fastly.toml` for local development:
 
 ```toml
-[local_server.rate_counter.ip_requests]
+[local_server.rate_counter.auth_requests]
+[local_server.rate_counter.api_requests]
+[local_server.rate_counter.general_requests]
 [local_server.penalty_box.blocked_ips]
 ```
 
@@ -80,31 +99,35 @@ No additional configuration needed for production - Fastly provides the rate cou
 ## Testing
 
 ```bash
-# First 100 requests succeed
-for i in {1..100}; do curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:7676/test; done
+# Test general endpoint (500/min limit)
+curl http://127.0.0.1:7676/
 
-# Request 101+ should return 429
-curl -v http://127.0.0.1:7676/test
+# Test API endpoint (100/min limit)
+curl http://127.0.0.1:7676/api/data
+
+# Test auth endpoint (10/min limit) - will hit limit quickly
+for i in {1..15}; do curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:7676/api/auth/login; done
 ```
 
 ## Variations
 
-**Per-endpoint limits:**
+**Simple IP-only rate limiting:**
 ```zig
-const endpoint_key = try std.fmt.allocPrint(allocator, "{s}:{s}", .{ ip_str, path });
-
-const api_limiter = erl.RateLimiter.init(.{
-    .rate_counter = "api_requests",
-    .penalty_box = "api_blocked",
+const limiter = erl.RateLimiter.init(.{
+    .rate_counter = "ip_requests",
+    .penalty_box = "blocked_ips",
     .window_seconds = 60,
-    .limit = 10,  // Stricter limit for API
-    .ttl_seconds = 600,
+    .limit = 100,
+    .ttl_seconds = 300,
 });
+
+if (try limiter.isBlocked(ip_str, 1)) {
+    // Return 429
+}
 ```
 
-**Tiered rate limits:**
+**Tiered rate limits by authentication:**
 ```zig
-// Check premium tier first
 var auth_buf: [256]u8 = undefined;
 if (downstream.request.headers.get("Authorization", &auth_buf)) |_| {
     const premium_limiter = erl.RateLimiter.init(.{

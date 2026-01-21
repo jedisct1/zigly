@@ -9,7 +9,7 @@ const std = @import("std");
 const zigly = @import("zigly");
 const geo = zigly.geo;
 
-fn start() !void {
+pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
@@ -29,18 +29,7 @@ fn start() !void {
 
     // Get current path
     var uri_buf: [4096]u8 = undefined;
-    const full_uri = try downstream.request.getUriString(&uri_buf);
-
-    // Extract the path from the URI
-    const path = blk: {
-        if (std.mem.indexOf(u8, full_uri, "://")) |scheme_end| {
-            const after_scheme = full_uri[scheme_end + 3 ..];
-            if (std.mem.indexOfScalar(u8, after_scheme, '/')) |path_start| {
-                break :blk after_scheme[path_start..];
-            }
-        }
-        break :blk full_uri;
-    };
+    const path = try downstream.request.getPath(&uri_buf);
 
     // Skip redirect for certain paths
     if (std.mem.startsWith(u8, path, "/api/") or
@@ -71,12 +60,6 @@ fn start() !void {
         try downstream.proxy("origin", null);
     }
 }
-
-pub export fn _start() callconv(.c) void {
-    start() catch |err| {
-        std.debug.print("Error: {}\n", .{err});
-    };
-}
 ```
 
 ## How It Works
@@ -84,9 +67,10 @@ pub export fn _start() callconv(.c) void {
 1. Get the client IP address
 2. Look up geolocation data for that IP using `geo.lookup()`
 3. Extract the country code from the result
-4. Skip redirects for API and static asset paths
-5. Redirect to the appropriate regional domain based on country
-6. Fall back to the default origin for unmatched countries
+4. Use `getPath()` to extract the request path
+5. Skip redirects for API and static asset paths
+6. Redirect to the appropriate regional domain based on country
+7. Fall back to the default origin for unmatched countries
 
 The `downstream.redirect(302, url)` method sends an HTTP 302 redirect response.
 

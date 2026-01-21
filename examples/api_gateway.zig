@@ -4,10 +4,10 @@
 const std = @import("std");
 const zigly = @import("zigly");
 
-fn start() !void {
+pub fn main() !void {
     var downstream = try zigly.downstream();
 
-    // Get the request path using the built-in helper
+    // Get the request path
     var uri_buf: [4096]u8 = undefined;
     const path = try downstream.request.getPath(&uri_buf);
 
@@ -25,10 +25,4 @@ fn start() !void {
         try downstream.response.body.writeAll("{\"error\":\"Not found\"}");
         try downstream.response.finish();
     }
-}
-
-pub export fn _start() callconv(.c) void {
-    start() catch |err| {
-        std.debug.print("Error: {}\n", .{err});
-    };
 }

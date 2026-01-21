@@ -9,7 +9,7 @@ Create `src/main.zig`:
 ```zig
 const zigly = @import("zigly");
 
-fn start() !void {
+pub fn main() !void {
     // Get the downstream connection (client request)
     var downstream = try zigly.downstream();
 
@@ -21,14 +21,9 @@ fn start() !void {
     // Send the response
     try downstream.response.finish();
 }
-
-// Wasm entry point
-pub export fn _start() callconv(.c) void {
-    start() catch unreachable;
-}
 ```
 
-The `_start` function is the WebAssembly entry point that Fastly Compute calls when a request arrives.
+Zig automatically generates the WASI `_start` entry point when targeting `wasm32-wasi`. Your `main()` function is the entry point for your service logic.
 
 ## Understanding the Code
 
@@ -53,7 +48,7 @@ The `finish()` call is required. Without it, no response is sent.
 Access request information:
 
 ```zig
-fn start() !void {
+pub fn main() !void {
     var downstream = try zigly.downstream();
     var request = downstream.request;
 
@@ -61,9 +56,9 @@ fn start() !void {
     var method_buf: [16]u8 = undefined;
     const method = try request.getMethod(&method_buf);
 
-    // Get the URI
+    // Get the path
     var uri_buf: [4096]u8 = undefined;
-    const uri = try request.getUriString(&uri_buf);
+    const path = try request.getPath(&uri_buf);
 
     // Check request type
     if (try request.isGet()) {
@@ -90,7 +85,7 @@ For POST/PUT requests, read the body:
 const std = @import("std");
 const zigly = @import("zigly");
 
-fn start() !void {
+pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
@@ -106,10 +101,6 @@ fn start() !void {
     try downstream.response.setStatus(200);
     try downstream.response.finish();
 }
-
-pub export fn _start() callconv(.c) void {
-    start() catch unreachable;
-}
 ```
 
 ## Proxying to a Backend
@@ -119,15 +110,11 @@ The most common use case is proxying requests to an origin server:
 ```zig
 const zigly = @import("zigly");
 
-fn start() !void {
+pub fn main() !void {
     var downstream = try zigly.downstream();
 
     // Proxy the entire request/response to the "origin" backend
     try downstream.proxy("origin", "api.example.com");
-}
-
-pub export fn _start() callconv(.c) void {
-    start() catch unreachable;
 }
 ```
 
@@ -143,7 +130,7 @@ Backends are configured in `fastly.toml` (see [Deployment](deployment.md)).
 Redirect clients to a different URL:
 
 ```zig
-fn start() !void {
+pub fn main() !void {
     var downstream = try zigly.downstream();
 
     // 301 permanent redirect
@@ -171,7 +158,7 @@ viceroy zig-out/bin/service.wasm
 Make a request:
 
 ```bash
-curl http://127.0.0.1:7878/
+curl http://127.0.0.1:7676/
 ```
 
 ## Next Steps
