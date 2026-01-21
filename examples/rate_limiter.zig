@@ -23,12 +23,13 @@ pub fn main() !void {
     // Choose rate limit based on endpoint sensitivity
     const config: struct { counter: []const u8, limit: u32, window: u32 } = if (std.mem.startsWith(u8, path, "/api/auth/") or
         std.mem.startsWith(u8, path, "/api/login"))
-    .{
-        // Strict limits for auth endpoints: 10 requests per minute
-        .counter = "auth_requests",
-        .limit = 10,
-        .window = 60,
-    } else if (std.mem.startsWith(u8, path, "/api/")) .{
+        .{
+            // Strict limits for auth endpoints: 10 requests per minute
+            .counter = "auth_requests",
+            .limit = 10,
+            .window = 60,
+        }
+    else if (std.mem.startsWith(u8, path, "/api/")) .{
         // Moderate limits for API: 100 requests per minute
         .counter = "api_requests",
         .limit = 100,
