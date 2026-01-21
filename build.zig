@@ -44,6 +44,8 @@ pub fn build(b: *std.Build) !void {
         "api_gateway",
         "rate_limiter",
         "geo_redirect",
+        "query_router",
+        "url_rewriter",
     };
 
     for (examples) |example| {

@@ -20,6 +20,15 @@ build = "echo 'Build using zig build from project root'"
     [local_server.backends.cdn]
     url = "https://httpbin.org"
 
+    [local_server.backends.api_v1]
+    url = "https://httpbin.org"
+
+    [local_server.backends.api_v2]
+    url = "https://httpbin.org"
+
+    [local_server.backends.api_backend]
+    url = "https://httpbin.org"
+
   [local_server.geolocation]
     [local_server.geolocation.addresses]
       [local_server.geolocation.addresses."127.0.0.1"]
