@@ -23,20 +23,9 @@ fn start() !void {
     };
     const country = result.value.country_code;
 
-    // Get current path
+    // Get current path using the URI helper
     var uri_buf: [4096]u8 = undefined;
-    const full_uri = try downstream.request.getUriString(&uri_buf);
-
-    // Extract the path from the URI (find path after scheme://host)
-    const path = blk: {
-        if (std.mem.indexOf(u8, full_uri, "://")) |scheme_end| {
-            const after_scheme = full_uri[scheme_end + 3 ..];
-            if (std.mem.indexOfScalar(u8, after_scheme, '/')) |path_start| {
-                break :blk after_scheme[path_start..];
-            }
-        }
-        break :blk full_uri;
-    };
+    const path = try downstream.request.getPath(&uri_buf);
 
     // Skip redirect for certain paths
     if (std.mem.startsWith(u8, path, "/api/") or
