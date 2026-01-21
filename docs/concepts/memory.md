@@ -17,7 +17,7 @@ This makes allocation explicit and controllable, which matters in memory-constra
 
 ### Page Allocator
 
-The simplest choice, allocates directly from WebAssembly memory pages:
+The simplest choice for direct memory allocation:
 
 ```zig
 const allocator = std.heap.page_allocator;
@@ -25,7 +25,14 @@ const data = try allocator.alloc(u8, 1024);
 defer allocator.free(data);
 ```
 
-Fast but doesn't track allocations. Memory isn't automatically freed.
+On WebAssembly targets, `page_allocator` automatically uses `WasmAllocator` under the hood. This is a WASM-optimized allocator that:
+- Uses 64KB bigpages matching WASM memory page size
+- Maintains free lists for efficient memory reuse
+- Grows memory via `@wasmMemoryGrow`
+
+This means you get WASM-optimized allocation without changing your code. The allocator is fast but doesn't track allocations for leak detection.
+
+**Note:** `std.heap.wasm_allocator` is identical to `page_allocator` on WASM targets. Using `page_allocator` is preferred because it keeps your code portable for native testing.
 
 ### General Purpose Allocator
 
@@ -176,6 +183,9 @@ WebAssembly linear memory starts small and grows on demand. Be aware of:
 - **Initial memory**: Usually 1-4 pages (64KB each)
 - **Maximum memory**: Platform-dependent, typically 256MB-4GB
 - **Growth**: Memory can grow but never shrink
+- **Page size**: WASM pages are always 64KB
+
+The `WasmAllocator` (used by `page_allocator` on WASM) is optimized for this model, using 64KB bigpages that align with WASM memory pages.
 
 Large allocations can fail if memory can't grow:
 
