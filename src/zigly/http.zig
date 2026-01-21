@@ -353,7 +353,7 @@ pub const Request = struct {
         var param_idx: usize = 0;
 
         // Split by '&' and parse each key-value pair
-        var iter = mem.tokenize(u8, query_string, "&");
+        var iter = mem.tokenizeScalar(u8, query_string, '&');
         while (iter.next()) |param| {
             if (param.len == 0) continue;
 
