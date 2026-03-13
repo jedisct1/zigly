@@ -15,9 +15,7 @@ const cache = zigly.cache;
 const erl = zigly.erl;
 
 fn start() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+    const allocator = std.heap.wasm_allocator;
 
     try zigly.compatibilityCheck();
 
@@ -336,6 +334,6 @@ fn start() !void {
     }
 }
 
-pub export fn _start() callconv(.c) void {
+pub fn main() void {
     start() catch unreachable;
 }

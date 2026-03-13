@@ -36,7 +36,7 @@ const RequestHeaders = struct {
 
     /// Return the full list of header names.
     pub fn names(self: RequestHeaders, allocator: Allocator) ![][]const u8 {
-        var names_list = ArrayList([]const u8){};
+        var names_list = ArrayList([]const u8).empty;
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
         while (true) {
@@ -100,7 +100,7 @@ const RequestHeaders = struct {
 
     /// Return all the values for a header.
     pub fn getAll(self: RequestHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
-        var values_list = ArrayList([]const u8){};
+        var values_list = ArrayList([]const u8).empty;
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
         while (true) {
@@ -145,7 +145,7 @@ const RequestHeaders = struct {
     /// Append a value to a header.
     pub fn append(self: *RequestHeaders, allocator: Allocator, name: []const u8, value: []const u8) !void {
         var value0 = try allocator.alloc(u8, value.len + 1);
-        mem.copy(u8, value0[0..value.len], value);
+        @memcpy(value0[0..value.len], value);
         value0[value.len] = 0;
         try fastly(wasm.FastlyHttpReq.header_append(self.handle, name.ptr, name.len, value0.ptr, value0.len));
     }
@@ -556,7 +556,7 @@ const ResponseHeaders = struct {
 
     /// Return the full list of header names.
     pub fn names(self: ResponseHeaders, allocator: Allocator) ![][]const u8 {
-        var names_list = ArrayList([]const u8){};
+        var names_list = ArrayList([]const u8).empty;
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
         while (true) {
@@ -615,7 +615,7 @@ const ResponseHeaders = struct {
 
     /// Return all the values for a header.
     pub fn getAll(self: ResponseHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
-        var values_list = ArrayList([]const u8){};
+        var values_list = ArrayList([]const u8).empty;
         var cursor: u32 = 0;
         var cursor_next: i64 = 0;
         while (true) {
@@ -660,7 +660,7 @@ const ResponseHeaders = struct {
     /// Append a value to a header.
     pub fn append(self: *ResponseHeaders, allocator: Allocator, name: []const u8, value: []const u8) !void {
         var value0 = try allocator.alloc(u8, value.len + 1);
-        mem.copy(u8, value0[0..value.len], value);
+        @memcpy(value0[0..value.len], value);
         value0[value.len] = 0;
         try fastly(wasm.FastlyHttpResp.header_append(self.handle, name.ptr, name.len, value0.ptr, value0.len));
     }

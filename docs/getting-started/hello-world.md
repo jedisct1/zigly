@@ -86,15 +86,14 @@ const std = @import("std");
 const zigly = @import("zigly");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+    var arena = std.heap.ArenaAllocator.init(std.heap.wasm_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
     var downstream = try zigly.downstream();
 
     // Read entire body (0 = no limit)
     const body = try downstream.request.body.readAll(allocator, 0);
-    defer allocator.free(body);
 
     // Process body...
 

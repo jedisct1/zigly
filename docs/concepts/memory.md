@@ -34,14 +34,19 @@ This means you get WASM-optimized allocation without changing your code. The all
 
 **Note:** `std.heap.wasm_allocator` is identical to `page_allocator` on WASM targets. Using `page_allocator` is preferred because it keeps your code portable for native testing.
 
-### General Purpose Allocator
+### Debug Allocator
 
-Tracks allocations, detects leaks in debug builds:
+Tracks allocations and detects leaks in debug builds:
 
 ```zig
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-defer _ = gpa.deinit();
-const allocator = gpa.allocator();
+var debug_alloc = std.heap.DebugAllocator(.{}).init(std.heap.page_allocator);
+defer {
+    const status = debug_alloc.deinit();
+    if (status == .leak) {
+        std.debug.print("Memory leak detected!\n", .{});
+    }
+}
+const allocator = debug_alloc.allocator();
 ```
 
 Slower than page allocator but helps find memory issues during development.
@@ -215,20 +220,20 @@ var body = try entry.getBody(null);
 defer body.close() catch {};
 ```
 
-### GPA for Development
+### Debug Allocator for Development
 
-Use GeneralPurposeAllocator during development to detect leaks:
+Use `DebugAllocator` during development to detect leaks:
 
 ```zig
 fn start() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
+    var debug_alloc = std.heap.DebugAllocator(.{}).init(std.heap.page_allocator);
     defer {
-        const status = gpa.deinit();
+        const status = debug_alloc.deinit();
         if (status == .leak) {
             std.debug.print("Memory leak detected!\n", .{});
         }
     }
-    const allocator = gpa.allocator();
+    const allocator = debug_alloc.allocator();
     // ...
 }
 ```
