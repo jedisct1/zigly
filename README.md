@@ -32,7 +32,7 @@ pub fn main() !void {
 Add the dependency:
 
 ```sh
-zig fetch --save=zigly https://github.com/jedisct1/zigly/archive/refs/tags/0.1.13.tar.gz
+zig fetch --save=zigly https://github.com/jedisct1/zigly/archive/refs/tags/0.1.14.tar.gz
 ```
 
 In `build.zig`:
