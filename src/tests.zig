@@ -19,7 +19,7 @@ fn start() !void {
 
     try zigly.compatibilityCheck();
 
-    var downstream = try zigly.downstream();
+    const downstream = try zigly.downstream();
     var request = downstream.request;
 
     {
