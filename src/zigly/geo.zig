@@ -54,7 +54,7 @@ test "IPv4 print" {
 }
 
 test "IPv6 print" {
-    var v6 = Ip{ .ip16 = .{0xff} ** 16 };
+    var v6 = Ip{ .ip16 = @splat(0xff) };
     try std.testing.expectEqualStrings(
         try v6.print(std.heap.page_allocator),
         "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",

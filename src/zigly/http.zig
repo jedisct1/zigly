@@ -771,7 +771,7 @@ pub const Downstream = struct {
 
     /// Get the downstream client IP address
     pub fn getClientIpAddr() !geo.Ip {
-        var ip = [_]u8{0} ** 16;
+        var ip: [16]u8 = @splat(0);
         var count: usize = 0;
 
         try fastly(wasm.FastlyHttpReq.downstream_client_ip_addr(&ip, &count));
@@ -780,7 +780,7 @@ pub const Downstream = struct {
             return geo.Ip{ .ip16 = ip };
         }
 
-        var ipv4 = [_]u8{0} ** 4;
+        var ipv4: [4]u8 = @splat(0);
         std.mem.copyForwards(u8, ipv4[0..], ip[0..4]);
 
         return geo.Ip{ .ip4 = ipv4 };
