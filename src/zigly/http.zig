@@ -209,6 +209,61 @@ pub const Body = struct {
     pub fn close(self: *Body) !void {
         try fastly(wasm.FastlyHttpBody.close(self.handle));
     }
+
+    /// Return a buffered `std.Io.Writer` backed by this body.
+    ///
+    /// The caller provides the backing buffer. Small writes accumulate in the
+    /// buffer and only reach the Fastly `body_write` hostcall when the buffer
+    /// fills up or `flush` is called, turning many tiny writes into a few
+    /// large ones. Call `flush` before sending the response.
+    pub fn writer(self: *Body, buf: []u8) BufferedWriter {
+        return BufferedWriter.init(self, buf);
+    }
+};
+
+/// Buffered `std.Io.Writer` for a `Body`. Constructed via `Body.writer`.
+pub const BufferedWriter = struct {
+    body: *Body,
+    interface: std.Io.Writer,
+
+    pub fn init(body: *Body, buf: []u8) BufferedWriter {
+        return .{
+            .body = body,
+            .interface = .{
+                .buffer = buf,
+                .vtable = &.{ .drain = drain },
+            },
+        };
+    }
+
+    /// Flush any buffered bytes through to the Fastly body.
+    pub fn flush(self: *BufferedWriter) !void {
+        self.interface.flush() catch return FastlyError.FastlyGenericError;
+    }
+
+    fn drain(io_w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
+        const self: *BufferedWriter = @alignCast(@fieldParentPtr("interface", io_w));
+        const buffered = io_w.buffered();
+        if (buffered.len != 0) {
+            self.body.writeAll(buffered) catch return error.WriteFailed;
+            io_w.end = 0;
+        }
+        var written: usize = 0;
+        for (data[0 .. data.len - 1]) |slice| {
+            if (slice.len == 0) continue;
+            self.body.writeAll(slice) catch return error.WriteFailed;
+            written += slice.len;
+        }
+        const pattern = data[data.len - 1];
+        if (pattern.len != 0) {
+            var i: usize = 0;
+            while (i < splat) : (i += 1) {
+                self.body.writeAll(pattern) catch return error.WriteFailed;
+                written += pattern.len;
+            }
+        }
+        return written;
+    }
 };
 
 /// An HTTP request.

@@ -53,7 +53,9 @@ pub fn main() !void {
     try downstream.response.headers.set("Content-Type", "text/html; charset=utf-8");
     try downstream.response.headers.set("Cache-Control", "no-store");
 
-    var out = &downstream.response.body;
+    var write_buf: [32 * 1024]u8 = undefined;
+    var bw = downstream.response.body.writer(&write_buf);
+    const out = &bw.interface;
     try out.writeAll(
         \\<!doctype html>
         \\<html lang="en">
@@ -80,8 +82,7 @@ pub fn main() !void {
 
     for (sources, fetched) |source, f| {
         const status_class = if (f.status >= 200 and f.status < 400) "status-ok" else "status-bad";
-        var head_buf: [1024]u8 = undefined;
-        const head = try std.fmt.bufPrint(&head_buf,
+        try out.print(
             \\<section>
             \\  <header>
             \\    <h2>{s}</h2>
@@ -93,16 +94,16 @@ pub fn main() !void {
             \\  </header>
             \\  <pre>
         , .{ source.title, status_class, f.status, source.host, source.path, f.body.len });
-        try out.writeAll(head);
         try writeHtmlEscaped(out, f.body);
         try out.writeAll("</pre>\n</section>\n");
     }
 
     try out.writeAll("</body></html>\n");
+    try bw.flush();
     try downstream.response.finish();
 }
 
-fn writeHtmlEscaped(body: *zigly.http.Body, input: []const u8) !void {
+fn writeHtmlEscaped(out: *std.Io.Writer, input: []const u8) !void {
     var start: usize = 0;
     var i: usize = 0;
     while (i < input.len) : (i += 1) {
@@ -115,10 +116,10 @@ fn writeHtmlEscaped(body: *zigly.http.Body, input: []const u8) !void {
             else => null,
         };
         if (replacement) |r| {
-            if (i > start) try body.writeAll(input[start..i]);
-            try body.writeAll(r);
+            if (i > start) try out.writeAll(input[start..i]);
+            try out.writeAll(r);
             start = i + 1;
         }
     }
-    if (start < input.len) try body.writeAll(input[start..]);
+    if (start < input.len) try out.writeAll(input[start..]);
 }
