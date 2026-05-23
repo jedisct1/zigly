@@ -1,0 +1,16 @@
+.{
+    .name = .zigly_aggregator,
+    .version = "0.0.0",
+    .fingerprint = 0x84072d8227c338c9,
+
+    .dependencies = .{
+        .zigly = .{
+            .path = "../..",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
