@@ -223,6 +223,34 @@ pub const BackendHealth = enum(u32) {
     UNHEALTHY = 2,
 };
 
+pub const BotAnalyzed = u32;
+
+pub const BotDetected = u32;
+
+pub const BotCategoryKind = u32;
+
+pub const BotVerified = u32;
+
+pub const ResvpnproxyIsAnonymous = u32;
+
+pub const ResvpnproxyIsAnonymousVpn = u32;
+
+pub const ResvpnproxyIsHostingProvider = u32;
+
+pub const ResvpnproxyIsProxyOverVpn = u32;
+
+pub const ResvpnproxyIsPublicProxy = u32;
+
+pub const ResvpnproxyIsRelayProxy = u32;
+
+pub const ResvpnproxyIsResidentialProxy = u32;
+
+pub const ResvpnproxyIsSmartDnsProxy = u32;
+
+pub const ResvpnproxyIsTorExitNode = u32;
+
+pub const ResvpnproxyIsVpnDatacenter = u32;
+
 pub const ContentEncodings = u32;
 pub const CONTENT_ENCODINGS_GZIP: ContentEncodings = 1;
 
@@ -409,6 +437,7 @@ pub const SendErrorDetailTag = enum(u32) {
     INTERNAL_ERROR = 22,
     TLS_ALERT_RECEIVED = 23,
     TLS_PROTOCOL_ERROR = 24,
+    H_2_ERROR = 25,
 };
 
 /// Mask representing which fields are understood by the guest, and which have been set by the host.
@@ -421,6 +450,7 @@ pub const SEND_ERROR_DETAIL_MASK_RESERVED: SendErrorDetailMask = 0x1;
 pub const SEND_ERROR_DETAIL_MASK_DNS_ERROR_RCODE: SendErrorDetailMask = 0x2;
 pub const SEND_ERROR_DETAIL_MASK_DNS_ERROR_INFO_CODE: SendErrorDetailMask = 0x4;
 pub const SEND_ERROR_DETAIL_MASK_TLS_ALERT_ID: SendErrorDetailMask = 0x8;
+pub const SEND_ERROR_DETAIL_MASK_H_2_ERROR: SendErrorDetailMask = 0x10;
 
 pub const SendErrorDetail = extern struct {
     tag: SendErrorDetailTag,
@@ -428,6 +458,9 @@ pub const SendErrorDetail = extern struct {
     dns_error_rcode: u16,
     dns_error_info_code: u16,
     tls_alert_id: u8,
+    h_2_error_frame: u8,
+    __pad16_0: u16 = undefined,
+    h_2_error_code: u32,
 };
 
 pub const Blocked = u32;
@@ -494,6 +527,13 @@ pub const NEXT_REQUEST_OPTIONS_MASK_TIMEOUT: NextRequestOptionsMask = 2;
 
 pub const NextRequestOptions = extern struct {
     timeout_ms: u64,
+};
+
+/// Kinds of responses to pending request handles.
+pub const PendingResponseKind = enum(u32) {
+    ANY = 0,
+    RESPONSE = 1,
+    ERROR = 2,
 };
 
 pub const FastlyAbi = struct {
@@ -764,6 +804,7 @@ pub const CACHE_LOOKUP_STATE_FOUND: CacheLookupState = 0x1;
 pub const CACHE_LOOKUP_STATE_USABLE: CacheLookupState = 0x2;
 pub const CACHE_LOOKUP_STATE_STALE: CacheLookupState = 0x4;
 pub const CACHE_LOOKUP_STATE_MUST_INSERT_OR_UPDATE: CacheLookupState = 0x8;
+pub const CACHE_LOOKUP_STATE_USABLE_IF_ERROR: CacheLookupState = 0x10;
 
 pub const FastlyCache = struct {
     /// Performs a non-request-collapsing cache lookup.
@@ -862,6 +903,10 @@ pub const FastlyCache = struct {
 
     /// Gets the lookup state of the existing object during replace, returning
     /// the `$none` error if there was no object.
+    ///
+    /// Note that FOUND == USABLE, and means "usable" (fresh or stale-while-revalidate).
+    /// Some SDKs were released that checked only FOUND to infer "usable";
+    /// we preserve the equivalence for backwards compatibility.
     pub extern "fastly_cache" fn replace_get_state(
         handle: CacheReplaceHandle,
         result_ptr: WasiMutPtr(CacheLookupState),
@@ -970,6 +1015,11 @@ pub const FastlyCache = struct {
         handle: CacheHandle,
     ) callconv(.c) FastlyStatus;
 
+    /// Get the state of a cache lookup, waiting for the lookup to complete if necessary.
+    ///
+    /// Note that FOUND == USABLE, and means "usable" (fresh or stale-while-revalidate).
+    /// Some SDKs were released that checked only FOUND to infer "usable";
+    /// we preserve the equivalence for backwards compatibility.
     pub extern "fastly_cache" fn get_state(
         handle: CacheHandle,
         result_ptr: WasiMutPtr(CacheLookupState),
@@ -1399,6 +1449,7 @@ pub const HttpCacheWriteOptions = extern struct {
     surrogate_keys_ptr: WasiMutPtr(Char8),
     surrogate_keys_len: usize,
     length: CacheObjectLength,
+    stale_if_error_ns: CacheDurationNs,
 };
 
 /// Options mask for `http_cache_write_options`.
@@ -1410,6 +1461,7 @@ pub const HTTP_CACHE_WRITE_OPTIONS_MASK_STALE_WHILE_REVALIDATE_NS: HttpCacheWrit
 pub const HTTP_CACHE_WRITE_OPTIONS_MASK_SURROGATE_KEYS: HttpCacheWriteOptionsMask = 0x10;
 pub const HTTP_CACHE_WRITE_OPTIONS_MASK_LENGTH: HttpCacheWriteOptionsMask = 0x20;
 pub const HTTP_CACHE_WRITE_OPTIONS_MASK_SENSITIVE_DATA: HttpCacheWriteOptionsMask = 0x40;
+pub const HTTP_CACHE_WRITE_OPTIONS_MASK_STALE_IF_ERROR_NS: HttpCacheWriteOptionsMask = 0x80;
 
 pub const FastlyHttpCache = struct {
     /// Determine whether a request is cacheable per conservative RFC 9111 semantics.
@@ -1524,7 +1576,25 @@ pub const FastlyHttpCache = struct {
         result_ptr: WasiMutPtr(HttpCacheHandle),
     ) callconv(.c) FastlyStatus;
 
-    /// Disable request collapsing and response caching for this cache entry.
+    /// Fulfill an obligation to provide a response to the cache by selecting a stale-if-error response.
+    ///
+    /// A guest that is obligated to insert/update the cache may not be able to produce an acceptable
+    /// response (e.g. unreachable backend, 5xx response). If the cache contains a response in the
+    /// stale-if-error period, the guest may prefer to use that response rather than returning an error.
+    ///
+    /// `transaction_choose_stale` is an alternative to `transaction_update_and_return_fresh` or
+    /// `transaction_insert_and_stream_back`. Like those methods, it completes a request collapse,
+    /// providing the stale response to all collapsed transactions; and, after calling
+    /// `transaction_choose_stale`, the cache handle provides the (stale) response to send to the client.
+    ///
+    /// However, `transaction_choose_stale` does not change the cached state. The next lookup will again
+    /// collapse and/or get an obligation to revalidate.
+    pub extern "fastly_http_cache" fn transaction_choose_stale(
+        handle: HttpCacheHandle,
+    ) callconv(.c) FastlyStatus;
+
+    /// Fulfill an obligation to provide a response to the cache by disabling request collapsing and
+    /// response caching for this cache entry.
     ///
     /// In Varnish terms, this function stores a hit-for-pass object.
     ///
@@ -1654,6 +1724,13 @@ pub const FastlyHttpCache = struct {
     /// Get the configured stale-while-revalidate period of the found response in nanoseconds,
     /// returning the `$none` error if there was no response found.
     pub extern "fastly_http_cache" fn get_stale_while_revalidate_ns(
+        handle: HttpCacheHandle,
+        result_ptr: WasiMutPtr(CacheDurationNs),
+    ) callconv(.c) FastlyStatus;
+
+    /// Get the configured stale-if-error period of the found response in nanoseconds,
+    /// returning the `$none` error if there was no response found.
+    pub extern "fastly_http_cache" fn get_stale_if_error_ns(
         handle: HttpCacheHandle,
         result_ptr: WasiMutPtr(CacheDurationNs),
     ) callconv(.c) FastlyStatus;
@@ -1852,6 +1929,97 @@ pub const FastlyHttpDownstream = struct {
     pub extern "fastly_http_downstream" fn fastly_key_is_valid(
         req: RequestHandle,
         result_ptr: WasiMutPtr(IsValid),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_bot_analyzed(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(BotAnalyzed),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_bot_detected(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(BotDetected),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_bot_name(
+        req: RequestHandle,
+        bot_name_out: WasiMutPtr(Char8),
+        bot_name_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_bot_category(
+        req: RequestHandle,
+        bot_category_out: WasiMutPtr(Char8),
+        bot_category_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_bot_category_kind(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(BotCategoryKind),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_bot_verified(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(BotVerified),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_anonymous(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsAnonymous),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_anonymous_vpn(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsAnonymousVpn),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_hosting_provider(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsHostingProvider),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_proxy_over_vpn(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsProxyOverVpn),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_public_proxy(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsPublicProxy),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_relay_proxy(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsRelayProxy),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_residential_proxy(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsResidentialProxy),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_smart_dns_proxy(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsSmartDnsProxy),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_tor_exit_node(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsTorExitNode),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_is_vpn_datacenter(
+        req: RequestHandle,
+        result_ptr: WasiMutPtr(ResvpnproxyIsVpnDatacenter),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_resvpnproxy_vpn_service_name(
+        req: RequestHandle,
+        vpn_service_name_out: WasiMutPtr(Char8),
+        vpn_service_name_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
     ) callconv(.c) FastlyStatus;
 };
 
@@ -2121,6 +2289,51 @@ pub const FastlyHttpReq = struct {
         result_ptr: WasiMutPtr(PendingRequestHandle),
     ) callconv(.c) FastlyStatus;
 
+    /// Sets a response header to the given value on a pending response.
+    ///
+    /// This will discard any previous values for the given header name, including any
+    /// pending header changes previously queued via other `pending_req_header_insert`
+    /// or `pending_req_header_append` calls for the same header name.
+    ///
+    /// The `target` argument controls under which conditions this header is applied.
+    pub extern "fastly_http_req" fn pending_req_header_insert(
+        h: PendingRequestHandle,
+        name_ptr: WasiPtr(u8),
+        name_len: usize,
+        value_ptr: WasiPtr(u8),
+        value_len: usize,
+        target: PendingResponseKind,
+    ) callconv(.c) FastlyStatus;
+
+    /// Adds a response header with given value to a pending response.
+    ///
+    /// Unlike `pending_req_header_insert`, this does not discard existing values for
+    /// the same header name, but will instead result in multiple headers of the
+    /// same name in the final response, each with their own values.
+    ///
+    /// The `target` argument controls under which conditions this header is applied.
+    pub extern "fastly_http_req" fn pending_req_header_append(
+        h: PendingRequestHandle,
+        name_ptr: WasiPtr(u8),
+        name_len: usize,
+        value_ptr: WasiPtr(u8),
+        value_len: usize,
+        target: PendingResponseKind,
+    ) callconv(.c) FastlyStatus;
+
+    /// Removes all response headers of the given name from a pending response.
+    ///
+    /// This will also remove any changes previously queued via `pending_req_header_insert`
+    /// or `pending_req_header_append` for the same header name.
+    ///
+    /// The `target` argument controls under which conditions this header is applied.
+    pub extern "fastly_http_req" fn pending_req_header_remove(
+        h: PendingRequestHandle,
+        name_ptr: WasiPtr(u8),
+        name_len: usize,
+        target: PendingResponseKind,
+    ) callconv(.c) FastlyStatus;
+
     pub extern "fastly_http_req" fn pending_req_poll(
         h: PendingRequestHandle,
         result_0_ptr: WasiMutPtr(IsDone),
@@ -2328,6 +2541,17 @@ pub const FastlyHttpResp = struct {
         h: ResponseHandle,
         b: BodyHandle,
         streaming: u32,
+    ) callconv(.c) FastlyStatus;
+
+    /// Use a pending request handle to send a downstream response.
+    ///
+    /// This will cause Compute to wait in the background for the pending request handle to
+    /// resolve into its response headers and body, and then forward them back downstream.
+    ///
+    /// If the pending request fails while sending and a response never materializes, Compute
+    /// will generate a 5XX response to send in its stead.
+    pub extern "fastly_http_resp" fn send_downstream_pending(
+        handle: PendingRequestHandle,
     ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn status_get(
@@ -2619,11 +2843,13 @@ pub const ShieldBackendOptions = u32;
 pub const SHIELD_BACKEND_OPTIONS_RESERVED: ShieldBackendOptions = 0x1;
 pub const SHIELD_BACKEND_OPTIONS_USE_CACHE_KEY: ShieldBackendOptions = 0x2;
 pub const SHIELD_BACKEND_OPTIONS_FIRST_BYTE_TIMEOUT: ShieldBackendOptions = 0x4;
+pub const SHIELD_BACKEND_OPTIONS_BETWEEN_BYTES_TIMEOUT: ShieldBackendOptions = 0x8;
 
 pub const ShieldBackendConfig = extern struct {
     cache_key: WasiMutPtr(Char8),
     cache_key_len: u32,
     first_byte_timeout_ms: u32,
+    between_bytes_timeout_ms: u32,
 };
 
 pub const FastlyShielding = struct {
