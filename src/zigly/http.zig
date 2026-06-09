@@ -755,6 +755,12 @@ const OutgoingResponse = struct {
         try fastly(wasm.FastlyHttpResp.send_downstream(self.handle, self.body.handle, 0));
     }
 
+    /// Choose whether response framing headers are inferred or taken from response headers.
+    pub fn setManualFramingMode(self: *OutgoingResponse, manual: bool) !void {
+        const mode = if (manual) wasm.FramingHeadersMode.MANUALLY_FROM_HEADERS else wasm.FramingHeadersMode.AUTOMATIC;
+        try fastly(wasm.FastlyHttpResp.framing_headers_mode_set(self.handle, mode));
+    }
+
     /// Get a the status code of a response.
     pub fn getStatus(self: OutgoingResponse) !u16 {
         var status: wasm.HttpStatus = undefined;
