@@ -267,6 +267,26 @@ pub const BufferedWriter = struct {
 };
 
 /// An HTTP request.
+/// Category of a detected bot, returned by `Request.botCategoryKind`.
+/// Non-exhaustive: the platform may add new categories, which arrive as values not listed here.
+pub const BotCategoryKind = enum(u32) {
+    none = 0,
+    suspected = 1,
+    accessibility = 2,
+    ai_crawler = 3,
+    ai_fetcher = 4,
+    content_fetcher = 5,
+    monitoring_site_tools = 6,
+    online_marketing = 7,
+    page_preview = 8,
+    platform_integrations = 9,
+    research = 10,
+    search_engine_crawler = 11,
+    search_engine_optimization = 12,
+    security_tools = 13,
+    _,
+};
+
 pub const Request = struct {
     /// The request headers.
     headers: RequestHeaders,
@@ -604,6 +624,105 @@ pub const Request = struct {
     pub fn close(self: *Request) !void {
         try fastly(wasm.FastlyHttpReq.close(self.headers.handle));
     }
+
+    fn downstreamFlag(self: Request, comptime hostcall: anytype) !bool {
+        var value: u32 = undefined;
+        try fastly(hostcall(self.headers.handle, &value));
+        return value != 0;
+    }
+
+    fn downstreamString(self: Request, comptime hostcall: anytype, buf: []u8) ![]const u8 {
+        var len: usize = undefined;
+        try fastly(hostcall(self.headers.handle, buf.ptr, buf.len, &len));
+        return buf[0..len];
+    }
+
+    /// Whether bot analysis was performed on this request.
+    pub fn botAnalyzed(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_bot_analyzed);
+    }
+
+    /// Whether the client was detected as a bot.
+    pub fn botDetected(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_bot_detected);
+    }
+
+    /// Whether the detected bot was verified (e.g. a known, well-behaved crawler).
+    pub fn botVerified(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_bot_verified);
+    }
+
+    /// The category kind of the detected bot.
+    pub fn botCategoryKind(self: Request) !BotCategoryKind {
+        var value: wasm.BotCategoryKind = undefined;
+        try fastly(wasm.FastlyHttpDownstream.downstream_bot_category_kind(self.headers.handle, &value));
+        return @enumFromInt(value);
+    }
+
+    /// Copy the name of the detected bot into `buf` and return the written slice.
+    pub fn botName(self: Request, buf: []u8) ![]const u8 {
+        return self.downstreamString(wasm.FastlyHttpDownstream.downstream_bot_name, buf);
+    }
+
+    /// Copy the category of the detected bot into `buf` and return the written slice.
+    pub fn botCategory(self: Request, buf: []u8) ![]const u8 {
+        return self.downstreamString(wasm.FastlyHttpDownstream.downstream_bot_category, buf);
+    }
+
+    /// Whether the client is connecting through an anonymizing service.
+    pub fn isAnonymous(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_anonymous);
+    }
+
+    /// Whether the client is connecting through an anonymous VPN.
+    pub fn isAnonymousVpn(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_anonymous_vpn);
+    }
+
+    /// Whether the client address belongs to a hosting provider.
+    pub fn isHostingProvider(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_hosting_provider);
+    }
+
+    /// Whether the client is connecting through a proxy over a VPN.
+    pub fn isProxyOverVpn(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_proxy_over_vpn);
+    }
+
+    /// Whether the client is connecting through a public proxy.
+    pub fn isPublicProxy(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_public_proxy);
+    }
+
+    /// Whether the client is connecting through a relay proxy.
+    pub fn isRelayProxy(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_relay_proxy);
+    }
+
+    /// Whether the client is connecting through a residential proxy.
+    pub fn isResidentialProxy(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_residential_proxy);
+    }
+
+    /// Whether the client is connecting through a smart DNS proxy.
+    pub fn isSmartDnsProxy(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_smart_dns_proxy);
+    }
+
+    /// Whether the client address is a Tor exit node.
+    pub fn isTorExitNode(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_tor_exit_node);
+    }
+
+    /// Whether the client address belongs to a VPN datacenter.
+    pub fn isVpnDatacenter(self: Request) !bool {
+        return self.downstreamFlag(wasm.FastlyHttpDownstream.downstream_resvpnproxy_is_vpn_datacenter);
+    }
+
+    /// Copy the name of the VPN service the client is using into `buf` and return the written slice.
+    pub fn vpnServiceName(self: Request, buf: []u8) ![]const u8 {
+        return self.downstreamString(wasm.FastlyHttpDownstream.downstream_resvpnproxy_vpn_service_name, buf);
+    }
 };
 
 const ResponseHeaders = struct {
@@ -847,6 +966,14 @@ pub const Downstream = struct {
         return geo.Ip{ .ip4 = ipv4 };
     }
 };
+
+/// Forward the eventual response of a pending (asynchronous) backend request straight to
+/// the client. Compute waits in the background for the pending handle to resolve into its
+/// response headers and body, then streams them downstream. If the request fails before a
+/// response materializes, a 5xx response is generated and sent in its place.
+pub fn sendDownstreamPending(pending: wasm.PendingRequestHandle) !void {
+    try fastly(wasm.FastlyHttpResp.send_downstream_pending(pending));
+}
 
 /// The initial connection to the proxy.
 pub fn downstream() !Downstream {

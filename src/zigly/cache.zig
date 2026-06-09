@@ -27,6 +27,13 @@ pub const LookupState = struct {
     pub fn mustInsertOrUpdate(self: LookupState) bool {
         return (self.value & wasm.CACHE_LOOKUP_STATE_MUST_INSERT_OR_UPDATE) != 0;
     }
+
+    /// The cached object is only usable if revalidation fails. When set, either
+    /// `mustInsertOrUpdate` is also set (revalidate before use) or `isUsable` is set
+    /// (revalidation has already failed and the stale object may be served).
+    pub fn isUsableIfError(self: LookupState) bool {
+        return (self.value & wasm.CACHE_LOOKUP_STATE_USABLE_IF_ERROR) != 0;
+    }
 };
 
 pub const WriteOptions = struct {
