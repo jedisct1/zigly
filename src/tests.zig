@@ -8,6 +8,7 @@ const zigly = @import("zigly.zig");
 const Dictionary = zigly.Dictionary;
 const UserAgent = zigly.UserAgent;
 const Request = zigly.http.Request;
+const PendingRequest = zigly.http.PendingRequest;
 const Logger = zigly.Logger;
 const Backend = zigly.Backend;
 const DynamicBackend = zigly.DynamicBackend;
@@ -181,6 +182,152 @@ fn start() !void {
             break :dyn_backend_test;
         };
         std.debug.print("Response body (first 200 chars): {s}\n", .{body[0..@min(body.len, 200)]});
+    }
+
+    // Test async (parallel) requests against the local delay server
+    async_test: {
+        std.debug.print("Testing async requests...\n", .{});
+
+        var start_ns: std.os.wasi.timestamp_t = undefined;
+        _ = std.os.wasi.clock_time_get(.MONOTONIC, 1, &start_ns);
+
+        // Send three requests in parallel; the backend delays each response
+        // by the number of milliseconds in the path.
+        const urls = [_][]const u8{
+            "http://127.0.0.1:9876/delay/600",
+            "http://127.0.0.1:9876/delay/200",
+            "http://127.0.0.1:9876/delay/400",
+        };
+        var pending: [urls.len]PendingRequest = undefined;
+        for (urls, 0..) |url, i| {
+            var query = Request.new("GET", url) catch |err| {
+                std.debug.print("Async request creation error: {}\n", .{err});
+                break :async_test;
+            };
+            pending[i] = query.sendAsync("local") catch |err| {
+                std.debug.print("sendAsync error: {}\n", .{err});
+                break :async_test;
+            };
+        }
+
+        // The slowest request cannot be done yet.
+        const early_ready = pending[0].isReady() catch |err| {
+            std.debug.print("isReady error: {}\n", .{err});
+            break :async_test;
+        };
+        std.debug.print("Slowest request ready immediately: {}\n", .{early_ready});
+
+        const early_poll = pending[0].poll() catch |err| {
+            std.debug.print("poll error: {}\n", .{err});
+            break :async_test;
+        };
+        std.debug.print("Slowest request polled immediately: {}\n", .{early_poll != null});
+        if (early_poll != null) {
+            // The poll consumed the pending request, so the handle can no
+            // longer take part in the select below.
+            return error.UnexpectedEarlyResponse;
+        }
+
+        var arena = ArenaAllocator.init(allocator);
+        defer arena.deinit();
+
+        // The 200ms request must win the select, with the index pointing at
+        // its slot in the slice.
+        const first = PendingRequest.select(&pending) catch |err| {
+            std.debug.print("select error: {}\n", .{err});
+            break :async_test;
+        };
+        var first_response = first.response;
+        const first_body = first_response.body.readAll(arena.allocator(), 0) catch |err| {
+            std.debug.print("Async body read error: {}\n", .{err});
+            break :async_test;
+        };
+        std.debug.print("First completion: index {}, status {}, body [{s}]\n", .{
+            first.index,
+            first_response.getStatus() catch 0,
+            first_body,
+        });
+        if (first.index != 1 or !std.mem.eql(u8, first_body, "delayed 200")) {
+            return error.UnexpectedCompletionOrder;
+        }
+
+        // Drain the remaining requests with the completion-order iterator.
+        pending[first.index] = pending[pending.len - 1];
+        var responses = PendingRequest.iterator(pending[0 .. pending.len - 1]);
+        const expected = [_][]const u8{ "delayed 400", "delayed 600" };
+        var done: usize = 0;
+        while (responses.next() catch |err| {
+            std.debug.print("iterator error: {}\n", .{err});
+            break :async_test;
+        }) |next_response| {
+            var response = next_response;
+            const body = response.body.readAll(arena.allocator(), 0) catch |err| {
+                std.debug.print("Async body read error: {}\n", .{err});
+                break :async_test;
+            };
+            std.debug.print("Next completion: body [{s}]\n", .{body});
+            if (done >= expected.len or !std.mem.eql(u8, body, expected[done])) {
+                return error.UnexpectedCompletionOrder;
+            }
+            done += 1;
+        }
+        if (done != expected.len) {
+            return error.UnexpectedCompletionOrder;
+        }
+
+        var end_ns: std.os.wasi.timestamp_t = undefined;
+        _ = std.os.wasi.clock_time_get(.MONOTONIC, 1, &end_ns);
+        const elapsed_ms = (end_ns - start_ns) / std.time.ns_per_ms;
+        std.debug.print("Elapsed: {}ms (sequential would be >= 1200ms)\n", .{elapsed_ms});
+        if (elapsed_ms >= 1200) {
+            return error.RequestsNotParallel;
+        }
+
+        std.debug.print("Async requests test completed\n", .{});
+    }
+
+    // Test a streaming async request: headers go out first, the body is
+    // written afterwards, and the response is waited on.
+    streaming_test: {
+        std.debug.print("Testing streaming async request...\n", .{});
+
+        var arena = ArenaAllocator.init(allocator);
+        defer arena.deinit();
+
+        var query = Request.new("POST", "http://127.0.0.1:9876/echo") catch |err| {
+            std.debug.print("Streaming request creation error: {}\n", .{err});
+            break :streaming_test;
+        };
+        const pending = query.sendAsyncStreaming("local") catch |err| {
+            std.debug.print("sendAsyncStreaming error: {}\n", .{err});
+            break :streaming_test;
+        };
+        query.body.writeAll("hello ") catch |err| {
+            std.debug.print("Streaming body write error: {}\n", .{err});
+            break :streaming_test;
+        };
+        query.body.writeAll("world") catch |err| {
+            std.debug.print("Streaming body write error: {}\n", .{err});
+            break :streaming_test;
+        };
+        query.body.close() catch |err| {
+            std.debug.print("Streaming body close error: {}\n", .{err});
+            break :streaming_test;
+        };
+        var response = pending.wait() catch |err| {
+            std.debug.print("Streaming wait error: {}\n", .{err});
+            break :streaming_test;
+        };
+        const body = response.body.readAll(arena.allocator(), 0) catch |err| {
+            std.debug.print("Streaming body read error: {}\n", .{err});
+            break :streaming_test;
+        };
+        std.debug.print("Echoed body: [{s}]\n", .{body});
+        if (!std.mem.eql(u8, body, "hello world")) {
+            return error.UnexpectedEchoedBody;
+        }
+
+        std.debug.print("Streaming async request test completed\n", .{});
     }
 
     // Test cache transactions

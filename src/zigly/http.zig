@@ -205,6 +205,12 @@ pub const Body = struct {
         }
     }
 
+    /// Move the entire content of another body to the end of this one,
+    /// without copying it through guest memory. The other body is consumed.
+    pub fn append(self: *Body, other: Body) !void {
+        try fastly(wasm.FastlyHttpBody.append(self.handle, other.handle));
+    }
+
     /// Close the body.
     pub fn close(self: *Body) !void {
         try fastly(wasm.FastlyHttpBody.close(self.handle));
@@ -481,11 +487,27 @@ pub const Request = struct {
         var resp_handle: wasm.ResponseHandle = undefined;
         var resp_body_handle: wasm.BodyHandle = undefined;
         try fastly(wasm.FastlyHttpReq.send(self.headers.handle, self.body.handle, backend.ptr, backend.len, &resp_handle, &resp_body_handle));
-        return IncomingResponse{
-            .handle = resp_handle,
-            .headers = ResponseHeaders{ .handle = resp_handle },
-            .body = Body{ .handle = resp_body_handle },
-        };
+        return IncomingResponse.fromHandles(resp_handle, resp_body_handle);
+    }
+
+    /// Send the request without waiting for the response, so that several
+    /// requests can be in flight at the same time.
+    /// The response is later retrieved with `PendingRequest.wait`,
+    /// `PendingRequest.poll` or `PendingRequest.select`.
+    pub fn sendAsync(self: *Request, backend: []const u8) !PendingRequest {
+        var pending_handle: wasm.PendingRequestHandle = undefined;
+        try fastly(wasm.FastlyHttpReq.send_async(self.headers.handle, self.body.handle, backend.ptr, backend.len, &pending_handle));
+        return PendingRequest{ .handle = pending_handle };
+    }
+
+    /// Send the request headers right away, leaving the body open for
+    /// streaming: keep writing to `self.body` and call `self.body.close()`
+    /// to complete the request. The response is retrieved from the returned
+    /// pending request, just like with `sendAsync`.
+    pub fn sendAsyncStreaming(self: *Request, backend: []const u8) !PendingRequest {
+        var pending_handle: wasm.PendingRequestHandle = undefined;
+        try fastly(wasm.FastlyHttpReq.send_async_streaming(self.headers.handle, self.body.handle, backend.ptr, backend.len, &pending_handle));
+        return PendingRequest{ .handle = pending_handle };
     }
 
     /// Caching policy
@@ -725,6 +747,99 @@ pub const Request = struct {
     }
 };
 
+/// A backend request sent with `Request.sendAsync` or
+/// `Request.sendAsyncStreaming`, whose response may not have arrived yet.
+/// This is an extern struct so that a slice of pending requests can be
+/// passed directly to the `select` hostcall as an array of handles.
+pub const PendingRequest = extern struct {
+    handle: wasm.PendingRequestHandle,
+
+    /// Block until the response arrives, then return it.
+    /// The pending request is consumed and must not be used afterwards.
+    pub fn wait(self: PendingRequest) !IncomingResponse {
+        var detail = std.mem.zeroes(wasm.SendErrorDetail);
+        var resp_handle: wasm.ResponseHandle = undefined;
+        var resp_body_handle: wasm.BodyHandle = undefined;
+        try fastly(wasm.FastlyHttpReq.pending_req_wait_v2(self.handle, &detail, &resp_handle, &resp_body_handle));
+        return IncomingResponse.fromHandles(resp_handle, resp_body_handle);
+    }
+
+    /// Return the response if it has arrived, or `null` if it is still pending.
+    /// Once a response has been returned, the pending request is consumed
+    /// and must not be used afterwards.
+    pub fn poll(self: PendingRequest) !?IncomingResponse {
+        var detail = std.mem.zeroes(wasm.SendErrorDetail);
+        var is_done: wasm.IsDone = undefined;
+        var resp_handle: wasm.ResponseHandle = undefined;
+        var resp_body_handle: wasm.BodyHandle = undefined;
+        try fastly(wasm.FastlyHttpReq.pending_req_poll_v2(self.handle, &detail, &is_done, &resp_handle, &resp_body_handle));
+        if (is_done == 0) {
+            return null;
+        }
+        return IncomingResponse.fromHandles(resp_handle, resp_body_handle);
+    }
+
+    /// Return `true` if the response has arrived, i.e. if `wait` would return
+    /// without blocking. Unlike `poll`, this does not consume the pending
+    /// request.
+    pub fn isReady(self: PendingRequest) !bool {
+        var ready: wasm.IsDone = undefined;
+        try fastly(wasm.FastlyAsyncIo.is_ready(self.handle, &ready));
+        return ready != 0;
+    }
+
+    /// The response of the first pending request that completed during a
+    /// `select` call, along with its position in the slice that was passed in.
+    pub const Selected = struct {
+        index: usize,
+        response: IncomingResponse,
+    };
+
+    /// Block until one of the pending requests completes, and return its
+    /// response along with its index. The winning entry is consumed; the
+    /// others remain pending and can be waited on or selected again.
+    pub fn select(pending: []const PendingRequest) !Selected {
+        comptime std.debug.assert(@sizeOf(PendingRequest) == @sizeOf(wasm.PendingRequestHandle));
+        if (pending.len == 0) {
+            return FastlyError.FastlyInvalidValue;
+        }
+        var detail = std.mem.zeroes(wasm.SendErrorDetail);
+        var done_idx: wasm.DoneIdx = undefined;
+        var resp_handle: wasm.ResponseHandle = undefined;
+        var resp_body_handle: wasm.BodyHandle = undefined;
+        try fastly(wasm.FastlyHttpReq.pending_req_select_v2(@ptrCast(pending.ptr), pending.len, &detail, &done_idx, &resp_handle, &resp_body_handle));
+        return Selected{
+            .index = done_idx,
+            .response = IncomingResponse.fromHandles(resp_handle, resp_body_handle),
+        };
+    }
+
+    /// Iterator over a set of pending requests that returns each response as
+    /// it arrives, in completion order. Constructed with `iterator`.
+    pub const Iterator = struct {
+        live: []PendingRequest,
+
+        /// Return the next response to complete, or `null` once all pending
+        /// requests have been consumed.
+        pub fn next(self: *Iterator) !?IncomingResponse {
+            if (self.live.len == 0) {
+                return null;
+            }
+            const selected = try select(self.live);
+            self.live[selected.index] = self.live[self.live.len - 1];
+            self.live = self.live[0 .. self.live.len - 1];
+            return selected.response;
+        }
+    };
+
+    /// Return an iterator that yields the response of each pending request as
+    /// it arrives, in completion order rather than in the order the requests
+    /// were sent. The slice is reordered in place as entries are consumed.
+    pub fn iterator(pending: []PendingRequest) Iterator {
+        return Iterator{ .live = pending };
+    }
+};
+
 const ResponseHeaders = struct {
     handle: wasm.ResponseHandle,
 
@@ -913,6 +1028,14 @@ pub const IncomingResponse = struct {
     headers: ResponseHeaders,
     body: Body,
 
+    fn fromHandles(resp_handle: wasm.ResponseHandle, body_handle: wasm.BodyHandle) IncomingResponse {
+        return IncomingResponse{
+            .handle = resp_handle,
+            .headers = ResponseHeaders{ .handle = resp_handle },
+            .body = Body{ .handle = body_handle },
+        };
+    }
+
     /// Get the status code of a response.
     pub fn getStatus(self: IncomingResponse) !u16 {
         var status: wasm.HttpStatus = undefined;
@@ -968,11 +1091,11 @@ pub const Downstream = struct {
 };
 
 /// Forward the eventual response of a pending (asynchronous) backend request straight to
-/// the client. Compute waits in the background for the pending handle to resolve into its
+/// the client. Compute waits in the background for the pending request to resolve into its
 /// response headers and body, then streams them downstream. If the request fails before a
 /// response materializes, a 5xx response is generated and sent in its place.
-pub fn sendDownstreamPending(pending: wasm.PendingRequestHandle) !void {
-    try fastly(wasm.FastlyHttpResp.send_downstream_pending(pending));
+pub fn sendDownstreamPending(pending: PendingRequest) !void {
+    try fastly(wasm.FastlyHttpResp.send_downstream_pending(pending.handle));
 }
 
 /// The initial connection to the proxy.

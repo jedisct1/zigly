@@ -393,6 +393,42 @@ var response = try request.send("origin");
 const status = try response.getStatus();
 ```
 
+#### sendAsync
+
+```zig
+pub fn sendAsync(self: *Request, backend: []const u8) !PendingRequest
+```
+
+Send the request without waiting for the response, so that several requests can be in flight at the same time. The response is retrieved later from the returned `PendingRequest`.
+
+```zig
+var req_a = try Request.new("GET", "https://api.example.com/a");
+var req_b = try Request.new("GET", "https://api.example.com/b");
+const pending_a = try req_a.sendAsync("api_backend");
+const pending_b = try req_b.sendAsync("api_backend");
+
+// Both requests are now in flight; wait for them in any order.
+var response_a = try pending_a.wait();
+var response_b = try pending_b.wait();
+```
+
+#### sendAsyncStreaming
+
+```zig
+pub fn sendAsyncStreaming(self: *Request, backend: []const u8) !PendingRequest
+```
+
+Send the request headers right away, leaving the body open for streaming. Keep writing to `request.body` and close it to complete the request.
+
+```zig
+var req = try Request.new("POST", "https://api.example.com/upload");
+const pending = try req.sendAsyncStreaming("api_backend");
+try req.body.writeAll("first chunk");
+try req.body.writeAll("second chunk");
+try req.body.close();
+var response = try pending.wait();
+```
+
 #### setCachingPolicy
 
 ```zig
@@ -457,6 +493,93 @@ pub fn close(self: *Request) !void
 ```
 
 Close the request prematurely.
+
+---
+
+## PendingRequest
+
+A backend request sent with `sendAsync` or `sendAsyncStreaming`, whose response may not have arrived yet.
+
+### Methods
+
+#### wait
+
+```zig
+pub fn wait(self: PendingRequest) !IncomingResponse
+```
+
+Block until the response arrives, then return it. The pending request is consumed and must not be used afterwards.
+
+```zig
+var response = try pending.wait();
+```
+
+#### poll
+
+```zig
+pub fn poll(self: PendingRequest) !?IncomingResponse
+```
+
+Return the response if it has arrived, or `null` if it is still pending. Once a response has been returned, the pending request is consumed and must not be used afterwards.
+
+```zig
+if (try pending.poll()) |response| {
+    // The response is ready
+} else {
+    // Still in flight; do something else in the meantime
+}
+```
+
+#### isReady
+
+```zig
+pub fn isReady(self: PendingRequest) !bool
+```
+
+Return `true` if the response has arrived, i.e. if `wait` would return without blocking. Unlike `poll`, this does not consume the pending request.
+
+#### select
+
+```zig
+pub fn select(pending: []const PendingRequest) !Selected
+```
+
+Block until one of the pending requests completes, and return its response along with its index in the slice. The winning entry is consumed; the others remain pending and can be waited on or selected again.
+
+`Selected` has two fields: `index` (`usize`) and `response` (`IncomingResponse`).
+
+**Example: fan out to several backends, use whatever answers first**
+
+```zig
+var req_a = try Request.new("GET", "https://mirror-a.example.com/data");
+var req_b = try Request.new("GET", "https://mirror-b.example.com/data");
+const pending = [_]PendingRequest{
+    try req_a.sendAsync("mirror_a"),
+    try req_b.sendAsync("mirror_b"),
+};
+const first = try PendingRequest.select(&pending);
+var response = first.response;
+```
+
+For processing every response in completion order, use `iterator` instead of calling `select` in a loop.
+
+#### iterator
+
+```zig
+pub fn iterator(pending: []PendingRequest) Iterator
+```
+
+Return an iterator that yields the response of each pending request as it arrives, in completion order rather than in the order the requests were sent. The slice is reordered in place as entries are consumed. The iterator's `next` method returns `!?IncomingResponse`: the next response to complete, or `null` once all pending requests have been consumed.
+
+**Example: process all responses in completion order**
+
+```zig
+var pending = [_]PendingRequest{ pending_a, pending_b, pending_c };
+var responses = PendingRequest.iterator(&pending);
+while (try responses.next()) |response| {
+    // ... process the response ...
+}
+```
 
 ---
 
@@ -602,6 +725,18 @@ Write entire buffer to the body.
 
 ```zig
 try body.writeAll("Hello, World!");
+```
+
+#### append
+
+```zig
+pub fn append(self: *Body, other: Body) !void
+```
+
+Move the entire content of another body to the end of this one. The bytes are spliced host-side without ever crossing into guest memory, so this is much cheaper than a read/write loop. The other body is consumed.
+
+```zig
+try response.body.append(upstream_response.body);
 ```
 
 #### close

@@ -58,6 +58,7 @@ pub fn build(b: *std.Build) !void {
         "geo_redirect",
         "query_router",
         "url_rewriter",
+        "parallel_requests",
     };
 
     for (examples) |example| {
