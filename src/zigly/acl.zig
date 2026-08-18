@@ -43,7 +43,7 @@ pub const Acl = struct {
 
         return LookupResult{
             .body = Body{ .handle = body_handle },
-            .acl_error = @enumFromInt(@intFromEnum(acl_error)),
+            .acl_error = @fromBackingInt(@backingInt(acl_error)),
         };
     }
 

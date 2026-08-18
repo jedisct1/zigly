@@ -118,7 +118,7 @@ pub const RateLimiter = struct {
             self.ttl_seconds,
             &blocked,
         ));
-        return @enumFromInt(blocked);
+        return @fromBackingInt(blocked);
     }
 
     pub fn isAllowed(self: RateLimiter, entry: []const u8, delta: u32) !bool {
@@ -153,5 +153,5 @@ pub fn checkRate(
         ttl_seconds,
         &blocked,
     ));
-    return @enumFromInt(blocked);
+    return @fromBackingInt(blocked);
 }

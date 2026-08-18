@@ -31,46 +31,57 @@ fn urlDecode(allocator: Allocator, encoded: []const u8) ![]u8 {
     return decoded;
 }
 
+/// Collect the values produced by a multi-value hostcall, such as header
+/// names or all the values of one header.
+/// The host packs several NUL-terminated values into each buffer.
+/// The returned slices are owned by the allocator.
+fn multiValueGet(allocator: Allocator, comptime hostcall: anytype, args: anytype) ![][]const u8 {
+    const not_written = std.math.maxInt(usize);
+    var values_list = ArrayList([]const u8).empty;
+    var cursor: u32 = 0;
+    var cursor_next: i64 = 0;
+    while (true) {
+        var buf_len_max: usize = 64;
+        var buf = try allocator.alloc(u8, buf_len_max);
+        var buf_len: usize = undefined;
+        while (true) {
+            buf_len = not_written;
+            const ret = fastly(@call(.auto, hostcall, args ++ .{ buf.ptr, buf_len_max, cursor, &cursor_next, &buf_len }));
+            var retry = buf_len == not_written;
+            ret catch |err| {
+                if (err != FastlyError.FastlyBufferTooSmall) {
+                    return err;
+                }
+                retry = true;
+            };
+            if (!retry) break;
+            buf_len_max *= 2;
+            buf = try allocator.realloc(buf, buf_len_max);
+        }
+        if (buf_len == 0) {
+            break;
+        }
+        if (buf[buf_len - 1] != 0) {
+            return FastlyError.FastlyGenericError;
+        }
+        var it = mem.splitScalar(u8, buf[0 .. buf_len - 1], 0);
+        while (it.next()) |value| {
+            try values_list.append(allocator, value);
+        }
+        if (cursor_next < 0) {
+            break;
+        }
+        cursor = @intCast(cursor_next);
+    }
+    return values_list.items;
+}
+
 const RequestHeaders = struct {
     handle: wasm.RequestHandle,
 
     /// Return the full list of header names.
     pub fn names(self: RequestHeaders, allocator: Allocator) ![][]const u8 {
-        var names_list = ArrayList([]const u8).empty;
-        var cursor: u32 = 0;
-        var cursor_next: i64 = 0;
-        while (true) {
-            var name_len_max: usize = 64;
-            var name_buf = try allocator.alloc(u8, name_len_max);
-            var name_len: usize = undefined;
-            while (true) {
-                name_len = ~@as(usize, 0);
-                const ret = fastly(wasm.FastlyHttpReq.header_names_get(self.handle, name_buf.ptr, name_len_max, cursor, &cursor_next, &name_len));
-                var retry = name_len == ~@as(usize, 0);
-                ret catch |err| {
-                    if (err != FastlyError.FastlyBufferTooSmall) {
-                        return err;
-                    }
-                    retry = true;
-                };
-                if (!retry) break;
-                name_len_max *= 2;
-                name_buf = try allocator.realloc(name_buf, name_len_max);
-            }
-            if (name_len == 0) {
-                break;
-            }
-            if (name_buf[name_len - 1] != 0) {
-                return FastlyError.FastlyGenericError;
-            }
-            const name = name_buf[0 .. name_len - 1];
-            try names_list.append(allocator, name);
-            if (cursor_next < 0) {
-                break;
-            }
-            cursor = @as(u32, @intCast(cursor_next));
-        }
-        return names_list.items;
+        return multiValueGet(allocator, wasm.FastlyHttpReq.header_names_get, .{self.handle});
     }
 
     /// Return the value for a header.
@@ -100,41 +111,7 @@ const RequestHeaders = struct {
 
     /// Return all the values for a header.
     pub fn getAll(self: RequestHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
-        var values_list = ArrayList([]const u8).empty;
-        var cursor: u32 = 0;
-        var cursor_next: i64 = 0;
-        while (true) {
-            var value_len_max: usize = 64;
-            var value_buf = try allocator.alloc(u8, value_len_max);
-            var value_len: usize = undefined;
-            while (true) {
-                value_len = ~@as(usize, 0);
-                const ret = fastly(wasm.FastlyHttpReq.header_values_get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, cursor, &cursor_next, &value_len));
-                var retry = value_len == ~@as(usize, 0);
-                ret catch |err| {
-                    if (err != FastlyError.FastlyBufferTooSmall) {
-                        return err;
-                    }
-                    retry = true;
-                };
-                if (!retry) break;
-                value_len_max *= 2;
-                value_buf = try allocator.realloc(value_buf, value_len_max);
-            }
-            if (value_len == 0) {
-                break;
-            }
-            if (value_buf[value_len - 1] != 0) {
-                return FastlyError.FastlyGenericError;
-            }
-            const value = value_buf[0 .. value_len - 1];
-            try values_list.append(allocator, value);
-            if (cursor_next < 0) {
-                break;
-            }
-            cursor = @as(u32, @intCast(cursor_next));
-        }
-        return values_list.items;
+        return multiValueGet(allocator, wasm.FastlyHttpReq.header_values_get, .{ self.handle, name.ptr, name.len });
     }
 
     /// Set the value for a header.
@@ -209,6 +186,56 @@ pub const Body = struct {
     /// without copying it through guest memory. The other body is consumed.
     pub fn append(self: *Body, other: Body) !void {
         try fastly(wasm.FastlyHttpBody.append(self.handle, other.handle));
+    }
+
+    /// Add a trailer to the body.
+    /// Unlike headers, trailers are sent after the content.
+    /// They can be added at any point before the body is closed.
+    /// This also works on the streaming body of a request sent with
+    /// `Request.sendAsyncStreaming`.
+    pub fn appendTrailer(self: *Body, name: []const u8, value: []const u8) !void {
+        try fastly(wasm.FastlyHttpBody.trailer_append(self.handle, name.ptr, name.len, value.ptr, value.len));
+    }
+
+    /// Return the full list of trailer names.
+    /// Trailers come after the content, so this fails with
+    /// `FastlyError.FastlyAgain` until the body has been fully read.
+    pub fn trailerNames(self: Body, allocator: Allocator) ![][]const u8 {
+        return multiValueGet(allocator, wasm.FastlyHttpBody.trailer_names_get, .{self.handle});
+    }
+
+    /// Return the value for a trailer.
+    /// Trailers come after the content, so this fails with
+    /// `FastlyError.FastlyAgain` until the body has been fully read.
+    pub fn getTrailer(self: Body, allocator: Allocator, name: []const u8) ![]const u8 {
+        var value_len_max: usize = 64;
+        var value_buf = try allocator.alloc(u8, value_len_max);
+        var value_len: usize = undefined;
+        while (true) {
+            const ret = fastly(wasm.FastlyHttpBody.trailer_value_get(
+                self.handle,
+                name.ptr,
+                name.len,
+                value_buf.ptr,
+                value_len_max,
+                &value_len,
+            ));
+            if (ret) break else |err| {
+                if (err != FastlyError.FastlyBufferTooSmall) {
+                    return err;
+                }
+                value_len_max *= 2;
+                value_buf = try allocator.realloc(value_buf, value_len_max);
+            }
+        }
+        return value_buf[0..value_len];
+    }
+
+    /// Return all the values for a trailer.
+    /// Trailers come after the content, so this fails with
+    /// `FastlyError.FastlyAgain` until the body has been fully read.
+    pub fn getAllTrailers(self: Body, allocator: Allocator, name: []const u8) ![][]const u8 {
+        return multiValueGet(allocator, wasm.FastlyHttpBody.trailer_values_get, .{ self.handle, name.ptr, name.len });
     }
 
     /// Close the body.
@@ -607,7 +634,7 @@ pub const Request = struct {
         const seconds = day_seconds.getSecondsIntoMinute();
 
         const month_names = [_][]const u8{ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-        const month_name = month_names[@intFromEnum(month_day.month) - 1];
+        const month_name = month_names[@backingInt(month_day.month) - 1];
 
         var timestamp_buf: [32]u8 = undefined;
         const timestamp = try std.fmt.bufPrint(&timestamp_buf, "[{d:0>2}/{s}/{d:0>4}:{d:0>2}:{d:0>2}:{d:0>2} +0000]", .{
@@ -678,7 +705,7 @@ pub const Request = struct {
     pub fn botCategoryKind(self: Request) !BotCategoryKind {
         var value: wasm.BotCategoryKind = undefined;
         try fastly(wasm.FastlyHttpDownstream.downstream_bot_category_kind(self.headers.handle, &value));
-        return @enumFromInt(value);
+        return @fromBackingInt(value);
     }
 
     /// Copy the name of the detected bot into `buf` and return the written slice.
@@ -845,41 +872,7 @@ const ResponseHeaders = struct {
 
     /// Return the full list of header names.
     pub fn names(self: ResponseHeaders, allocator: Allocator) ![][]const u8 {
-        var names_list = ArrayList([]const u8).empty;
-        var cursor: u32 = 0;
-        var cursor_next: i64 = 0;
-        while (true) {
-            var name_len_max: usize = 64;
-            var name_buf = try allocator.alloc(u8, name_len_max);
-            var name_len: usize = undefined;
-            while (true) {
-                name_len = ~@as(usize, 0);
-                const ret = fastly(wasm.FastlyHttpResp.header_names_get(self.handle, name_buf.ptr, name_len_max, cursor, &cursor_next, &name_len));
-                var retry = name_len == ~@as(usize, 0);
-                ret catch |err| {
-                    if (err != FastlyError.FastlyBufferTooSmall) {
-                        return err;
-                    }
-                    retry = true;
-                };
-                if (!retry) break;
-                name_len_max *= 2;
-                name_buf = try allocator.realloc(name_buf, name_len_max);
-            }
-            if (name_len == 0) {
-                break;
-            }
-            if (name_buf[name_len - 1] != 0) {
-                return FastlyError.FastlyGenericError;
-            }
-            const name = name_buf[0 .. name_len - 1];
-            try names_list.append(allocator, name);
-            if (cursor_next < 0) {
-                break;
-            }
-            cursor = @as(u32, @intCast(cursor_next));
-        }
-        return names_list.items;
+        return multiValueGet(allocator, wasm.FastlyHttpResp.header_names_get, .{self.handle});
     }
 
     /// Return the value for a header.
@@ -904,41 +897,7 @@ const ResponseHeaders = struct {
 
     /// Return all the values for a header.
     pub fn getAll(self: ResponseHeaders, allocator: Allocator, name: []const u8) ![][]const u8 {
-        var values_list = ArrayList([]const u8).empty;
-        var cursor: u32 = 0;
-        var cursor_next: i64 = 0;
-        while (true) {
-            var value_len_max: usize = 64;
-            var value_buf = try allocator.alloc(u8, value_len_max);
-            var value_len: usize = undefined;
-            while (true) {
-                value_len = ~@as(usize, 0);
-                const ret = fastly(wasm.FastlyHttpResp.header_values_get(self.handle, name.ptr, name.len, value_buf.ptr, value_len_max, cursor, &cursor_next, &value_len));
-                var retry = value_len == ~@as(usize, 0);
-                ret catch |err| {
-                    if (err != FastlyError.FastlyBufferTooSmall) {
-                        return err;
-                    }
-                    retry = true;
-                };
-                if (!retry) break;
-                value_len_max *= 2;
-                value_buf = try allocator.realloc(value_buf, value_len_max);
-            }
-            if (value_len == 0) {
-                break;
-            }
-            if (value_buf[value_len - 1] != 0) {
-                return FastlyError.FastlyGenericError;
-            }
-            const value = value_buf[0 .. value_len - 1];
-            try values_list.append(allocator, value);
-            if (cursor_next < 0) {
-                break;
-            }
-            cursor = @as(u32, @intCast(cursor_next));
-        }
-        return values_list.items;
+        return multiValueGet(allocator, wasm.FastlyHttpResp.header_values_get, .{ self.handle, name.ptr, name.len });
     }
 
     /// Set a header to a value.
@@ -999,12 +958,12 @@ const OutgoingResponse = struct {
     pub fn getStatus(self: OutgoingResponse) !u16 {
         var status: wasm.HttpStatus = undefined;
         try fastly(wasm.FastlyHttpResp.status_get(self.handle, &status));
-        return @as(u16, @intCast(status));
+        return status;
     }
 
     /// Change the status code of a response.
     pub fn setStatus(self: *OutgoingResponse, status: u16) !void {
-        try fastly(wasm.FastlyHttpResp.status_set(self.handle, @as(wasm.HttpStatus, @intCast(status))));
+        try fastly(wasm.FastlyHttpResp.status_set(self.handle, status));
     }
 
     /// Zero-copy the content of an incoming response.
@@ -1040,7 +999,7 @@ pub const IncomingResponse = struct {
     pub fn getStatus(self: IncomingResponse) !u16 {
         var status: wasm.HttpStatus = undefined;
         try fastly(wasm.FastlyHttpResp.status_get(self.handle, &status));
-        return @as(u16, @intCast(status));
+        return status;
     }
 
     /// Close the response after use.

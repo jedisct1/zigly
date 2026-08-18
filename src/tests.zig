@@ -37,6 +37,10 @@ fn start() !void {
         const names = try request.headers.names(arena.allocator());
         for (names) |name| {
             std.debug.print("[{s}]\n", .{name});
+            // A leftover NUL means the packed host buffer was not split apart.
+            if (std.mem.indexOfScalar(u8, name, 0) != null) {
+                return error.HeaderNameContainsNul;
+            }
         }
     }
 
@@ -328,6 +332,116 @@ fn start() !void {
         }
 
         std.debug.print("Streaming async request test completed\n", .{});
+    }
+
+    // Write trailers to a body, then read them back after consuming it.
+    trailer_test: {
+        std.debug.print("Testing body trailers...\n", .{});
+
+        var arena = ArenaAllocator.init(allocator);
+        defer arena.deinit();
+
+        var query = Request.new("POST", "http://127.0.0.1:9876/echo") catch |err| {
+            std.debug.print("Trailer request creation error: {}\n", .{err});
+            break :trailer_test;
+        };
+        query.body.writeAll("trailer test") catch |err| {
+            std.debug.print("Trailer body write error: {}\n", .{err});
+            break :trailer_test;
+        };
+        query.body.appendTrailer("x-checksum", "abc123") catch |err| {
+            std.debug.print("appendTrailer error: {}\n", .{err});
+            break :trailer_test;
+        };
+        try query.body.appendTrailer("x-tag", "one");
+        try query.body.appendTrailer("x-tag", "two");
+
+        // Trailers stay unreadable until the content has been consumed.
+        if (query.body.getTrailer(arena.allocator(), "x-checksum")) |_| {
+            return error.TrailersReadableTooEarly;
+        } else |err| if (err != zigly.FastlyError.FastlyAgain) {
+            std.debug.print("Unexpected early trailer read error: {}\n", .{err});
+            return error.UnexpectedTrailerError;
+        }
+
+        const content = try query.body.readAll(arena.allocator(), 0);
+        if (!std.mem.eql(u8, content, "trailer test")) {
+            return error.UnexpectedTrailerBody;
+        }
+
+        const checksum = try query.body.getTrailer(arena.allocator(), "x-checksum");
+        std.debug.print("Trailer x-checksum: [{s}]\n", .{checksum});
+        if (!std.mem.eql(u8, checksum, "abc123")) {
+            return error.UnexpectedTrailerValue;
+        }
+
+        const names = try query.body.trailerNames(arena.allocator());
+        std.debug.print("Trailer count: {}\n", .{names.len});
+        if (names.len != 2) {
+            return error.UnexpectedTrailerNames;
+        }
+
+        const tags = try query.body.getAllTrailers(arena.allocator(), "x-tag");
+        if (tags.len != 2 or !std.mem.eql(u8, tags[0], "one") or !std.mem.eql(u8, tags[1], "two")) {
+            return error.UnexpectedTrailerValues;
+        }
+
+        std.debug.print("Body trailers test completed\n", .{});
+    }
+
+    // Send requests whose bodies carry trailers, buffered and streaming.
+    trailer_send_test: {
+        std.debug.print("Testing requests with trailers...\n", .{});
+
+        var arena = ArenaAllocator.init(allocator);
+        defer arena.deinit();
+
+        var query = Request.new("POST", "http://127.0.0.1:9876/echo") catch |err| {
+            std.debug.print("Trailer send request creation error: {}\n", .{err});
+            break :trailer_send_test;
+        };
+        query.body.writeAll("buffered with trailers") catch |err| {
+            std.debug.print("Trailer send body write error: {}\n", .{err});
+            break :trailer_send_test;
+        };
+        try query.body.appendTrailer("x-checksum", "deadbeef");
+        var response = query.send("local") catch |err| {
+            std.debug.print("Trailer send error: {}\n", .{err});
+            break :trailer_send_test;
+        };
+        const body = response.body.readAll(arena.allocator(), 0) catch |err| {
+            std.debug.print("Trailer send body read error: {}\n", .{err});
+            break :trailer_send_test;
+        };
+        if (!std.mem.eql(u8, body, "buffered with trailers")) {
+            return error.UnexpectedEchoedBody;
+        }
+
+        // Streaming requests accept trailers up to the closing of the body.
+        var streaming_query = Request.new("POST", "http://127.0.0.1:9876/echo") catch |err| {
+            std.debug.print("Streaming trailer request creation error: {}\n", .{err});
+            break :trailer_send_test;
+        };
+        const pending = streaming_query.sendAsyncStreaming("local") catch |err| {
+            std.debug.print("Streaming trailer sendAsyncStreaming error: {}\n", .{err});
+            break :trailer_send_test;
+        };
+        try streaming_query.body.writeAll("streaming with trailers");
+        try streaming_query.body.appendTrailer("x-checksum", "cafebabe");
+        try streaming_query.body.close();
+        var streaming_response = pending.wait() catch |err| {
+            std.debug.print("Streaming trailer wait error: {}\n", .{err});
+            break :trailer_send_test;
+        };
+        const streamed = streaming_response.body.readAll(arena.allocator(), 0) catch |err| {
+            std.debug.print("Streaming trailer body read error: {}\n", .{err});
+            break :trailer_send_test;
+        };
+        if (!std.mem.eql(u8, streamed, "streaming with trailers")) {
+            return error.UnexpectedEchoedBody;
+        }
+
+        std.debug.print("Requests with trailers test completed\n", .{});
     }
 
     // Test cache transactions

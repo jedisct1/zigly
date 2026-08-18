@@ -739,6 +739,57 @@ Move the entire content of another body to the end of this one. The bytes are sp
 try response.body.append(upstream_response.body);
 ```
 
+#### appendTrailer
+
+```zig
+pub fn appendTrailer(self: *Body, name: []const u8, value: []const u8) !void
+```
+
+Add a trailer to the body. Unlike headers, trailers are sent after the content. This makes them useful for values that are only known once the content has been produced, such as a checksum.
+
+Trailers can be added at any point before the body is closed. This also works on the streaming body of a request sent with `sendAsyncStreaming`.
+
+```zig
+var request = try Request.new("POST", "https://example.com/upload");
+try request.body.writeAll(payload);
+try request.body.appendTrailer("x-checksum", checksum_hex);
+var response = try request.send("backend");
+```
+
+#### trailerNames
+
+```zig
+pub fn trailerNames(self: Body, allocator: Allocator) ![][]const u8
+```
+
+Return the full list of trailer names. Trailers come after the content, so this fails with `FastlyError.FastlyAgain` until the body has been fully read.
+
+```zig
+const data = try response.body.readAll(allocator, 0);
+const names = try response.body.trailerNames(allocator);
+```
+
+#### getTrailer
+
+```zig
+pub fn getTrailer(self: Body, allocator: Allocator, name: []const u8) ![]const u8
+```
+
+Return the value for a trailer. The body must have been fully read first, like for `trailerNames`.
+
+```zig
+const data = try response.body.readAll(allocator, 0);
+const checksum = try response.body.getTrailer(allocator, "x-checksum");
+```
+
+#### getAllTrailers
+
+```zig
+pub fn getAllTrailers(self: Body, allocator: Allocator, name: []const u8) ![][]const u8
+```
+
+Return all the values for a trailer. The body must have been fully read first, like for `trailerNames`.
+
 #### close
 
 ```zig
