@@ -602,10 +602,9 @@ fn start() !void {
         const value = try result.body.readAll(arena.allocator(), 0);
         std.debug.print("KV lookup value: [{s}]\n", .{value});
         std.debug.assert(std.mem.eql(u8, value, "kv_test_value"));
-        if (result.metadata) |metadata| {
-            std.debug.print("KV lookup metadata: [{s}]\n", .{metadata});
-            std.debug.assert(std.mem.eql(u8, metadata, "kv_test_metadata"));
-        }
+        const metadata = result.metadata orelse return error.KvMetadataMissing;
+        std.debug.print("KV lookup metadata: [{s}]\n", .{metadata});
+        std.debug.assert(std.mem.eql(u8, metadata, "kv_test_metadata"));
         std.debug.print("KV lookup generation: {}\n", .{result.generation});
 
         const all = try store.getAll("kv_test_key", arena.allocator(), 0);
@@ -618,6 +617,7 @@ fn start() !void {
 
         const listing = try store.list(arena.allocator(), .{ .prefix = "kv_test_" }, 0);
         std.debug.print("KV list: [{s}]\n", .{listing});
+        std.debug.assert(std.mem.indexOf(u8, listing, "kv_test_key") != null);
 
         try store.delete("kv_test_key");
         if (store.lookup("kv_test_key", arena.allocator())) |_| {

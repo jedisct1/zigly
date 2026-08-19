@@ -1,6 +1,6 @@
 # KV Store Reference
 
-The KV module provides access to Fastly's key-value storage.
+The KV module provides access to Fastly's key-value storage. It uses the modern `fastly_kv_store` interface. Values can carry metadata, a time-to-live, and a generation number for optimistic concurrency.
 
 ## Store
 
@@ -20,54 +20,140 @@ var store = try kv.Store.open("my_store");
 
 ### Methods
 
-#### getAsHttpBody
+#### lookup
 
 ```zig
-pub fn getAsHttpBody(store: *Store, key: []const u8) !Body
+pub fn lookup(store: Store, key: []const u8, allocator: Allocator) !LookupResult
 ```
 
-Get a value as an HTTP body for streaming reads.
+Look up a key. The result contains the value as an HTTP body, the optional metadata, and the generation number. The allocator is only used to copy the metadata.
 
 ```zig
-var body = try store.getAsHttpBody("my_key");
-var buf: [4096]u8 = undefined;
-const data = try body.read(&buf);
+var result = try store.lookup("my_key", allocator);
+defer result.deinit(allocator);
+
+const value = try result.body.readAll(allocator, 0);
+if (result.metadata) |metadata| {
+    // Use the metadata
+}
 ```
 
-Returns `FastlyError.FastlyNone` if the key doesn't exist.
+Returns `error.NotFound` if the key doesn't exist.
 
 #### getAll
 
 ```zig
-pub fn getAll(store: *Store, key: []const u8, allocator: Allocator, max_length: usize) ![]u8
+pub fn getAll(store: Store, key: []const u8, allocator: Allocator, max_length: usize) ![]u8
 ```
 
-Get the entire value. Pass 0 for `max_length` for no limit.
+Get the entire value as newly allocated bytes. Metadata and generation are discarded. Pass 0 for `max_length` for no limit.
 
 ```zig
 const value = try store.getAll("my_key", allocator, 0);
 defer allocator.free(value);
 ```
 
-#### replace
+#### insert
 
 ```zig
-pub fn replace(store: *Store, key: []const u8, value: []const u8) !void
+pub fn insert(store: Store, key: []const u8, value: []const u8, options: InsertOptions) !void
 ```
 
-Insert or replace a value.
+Insert or update a value. The call waits until the store confirms the write.
 
 ```zig
-try store.replace("my_key", "my_value");
+try store.insert("my_key", "my_value", .{});
 ```
 
-#### close
+Options:
 
 ```zig
-pub fn close(_: *Store) !void
+pub const InsertOptions = struct {
+    mode: InsertMode = .overwrite,
+    metadata: ?[]const u8 = null,
+    time_to_live_sec: ?u32 = null,
+    if_generation_match: ?u64 = null,
+    background_fetch: bool = false,
+};
 ```
 
-Close the store. (Currently a no-op as there's no close hostcall.)
+The mode controls what happens when the key already exists:
+
+- `.overwrite` replaces the value. This is the default.
+- `.add` fails with `error.PreconditionFailed` if the key exists.
+- `.append` adds the new bytes after the current value.
+- `.prepend` adds the new bytes before the current value.
+
+```zig
+// Store a value with metadata and a one hour expiration
+try store.insert("session", token, .{
+    .metadata = "created-by=edge",
+    .time_to_live_sec = 3600,
+});
+
+// Only update if nobody changed the value in the meantime
+var result = try store.lookup("counter", allocator);
+defer result.deinit(allocator);
+try store.insert("counter", new_value, .{
+    .if_generation_match = result.generation,
+});
+```
+
+#### delete
+
+```zig
+pub fn delete(store: Store, key: []const u8) !void
+```
+
+Delete a key. Returns `error.NotFound` if the key doesn't exist.
+
+```zig
+try store.delete("my_key");
+```
+
+#### list
+
+```zig
+pub fn list(store: Store, allocator: Allocator, options: ListOptions, max_length: usize) ![]u8
+```
+
+List keys. The result is a JSON document with the matching keys and a cursor for pagination.
+
+```zig
+const listing = try store.list(allocator, .{ .prefix = "session_" }, 0);
+defer allocator.free(listing);
+```
+
+Options:
+
+```zig
+pub const ListOptions = struct {
+    cursor: ?[]const u8 = null,
+    limit: ?u32 = null,
+    prefix: ?[]const u8 = null,
+    eventual_consistency: bool = false,
+};
+```
+
+`listAsHttpBody` returns the same document as an HTTP body instead, for streaming reads.
+
+### Errors
+
+Store operations can fail with a `KvError` reported by the platform:
+
+```zig
+pub const KvError = error{
+    Uninitialized,
+    BadRequest,
+    NotFound,
+    PreconditionFailed,
+    PayloadTooLarge,
+    Internal,
+    TooManyRequests,
+};
+```
+
+Transport-level failures surface as `FastlyError` instead.
 
 ---
 
@@ -81,7 +167,7 @@ const zigly = @import("zigly");
 const kv = zigly.kv;
 
 fn start() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var arena = std.heap.ArenaAllocator.init(std.heap.wasm_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
@@ -89,17 +175,15 @@ fn start() !void {
 
     var store = try kv.Store.open("config");
 
-    // Read a value
-    const api_url = store.getAll("api_url", allocator, 0) catch |err| {
-        if (err == zigly.FastlyError.FastlyNone) {
-            // Key not found, use default
-            return "https://api.example.com";
-        }
-        return err;
+    // Read a value, with a default when the key is missing
+    const api_url = store.getAll("api_url", allocator, 0) catch |err| switch (err) {
+        error.NotFound => "https://api.example.com",
+        else => return err,
     };
+    _ = api_url;
 
     // Write a value
-    try store.replace("last_request", "timestamp");
+    try store.insert("last_request", "timestamp", .{});
 
     try downstream.response.setStatus(200);
     try downstream.response.finish();
@@ -109,13 +193,14 @@ fn start() !void {
 ### Streaming Large Values
 
 ```zig
-fn streamLargeValue(store: *kv.Store, key: []const u8) !void {
-    var body = try store.getAsHttpBody(key);
-    defer body.close() catch {};
+fn streamLargeValue(store: kv.Store, key: []const u8, allocator: std.mem.Allocator) !void {
+    var result = try store.lookup(key, allocator);
+    defer result.deinit(allocator);
+    defer result.body.close() catch {};
 
     var buf: [8192]u8 = undefined;
     while (true) {
-        const chunk = try body.read(&buf);
+        const chunk = try result.body.read(&buf);
         if (chunk.len == 0) break;
         // Process chunk
     }
@@ -125,8 +210,10 @@ fn streamLargeValue(store: *kv.Store, key: []const u8) !void {
 ### Check if Key Exists
 
 ```zig
-fn keyExists(store: *kv.Store, key: []const u8) bool {
-    _ = store.getAsHttpBody(key) catch return false;
+fn keyExists(store: kv.Store, key: []const u8, allocator: std.mem.Allocator) bool {
+    var result = store.lookup(key, allocator) catch return false;
+    result.deinit(allocator);
+    result.body.close() catch {};
     return true;
 }
 ```

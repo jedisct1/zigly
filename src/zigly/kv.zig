@@ -123,9 +123,11 @@ pub const Store = struct {
         ));
         try check(kv_error);
 
+        var body = Body{ .handle = body_handle };
+        errdefer body.close() catch {};
         const metadata: ?[]const u8 = if (metadata_len == 0) null else try allocator.dupe(u8, metadata_buf[0..metadata_len]);
         return LookupResult{
-            .body = Body{ .handle = body_handle },
+            .body = body,
             .metadata = metadata,
             .generation = generation,
         };
@@ -144,6 +146,8 @@ pub const Store = struct {
         var body_handle: wasm.BodyHandle = undefined;
         try fastly(wasm.FastlyHttpBody.new(&body_handle));
         var body = Body{ .handle = body_handle };
+        var body_handed_off = false;
+        errdefer if (!body_handed_off) body.close() catch {};
         try body.writeAll(value);
 
         var mask: wasm.KvInsertConfigOptions = 0;
@@ -174,6 +178,7 @@ pub const Store = struct {
 
         var insert_handle: wasm.KvStoreInsertHandle = undefined;
         try fastly(wasm.FastlyKvStore.insert(store.handle, key.ptr, key.len, body_handle, mask, &config, &insert_handle));
+        body_handed_off = true;
 
         var kv_error = wasm.KvError.UNINITIALIZED;
         try fastly(wasm.FastlyKvStore.insert_wait(insert_handle, &kv_error));
