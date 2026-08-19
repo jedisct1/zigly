@@ -585,6 +585,52 @@ fn start() !void {
         std.debug.print("Rate limiting test completed\n", .{});
     }
 
+    // Test the KV store
+    {
+        var arena = ArenaAllocator.init(allocator);
+        defer arena.deinit();
+
+        var store = try zigly.kv.Store.open("test_store");
+
+        try store.insert("kv_test_key", "kv_test_value", .{
+            .metadata = "kv_test_metadata",
+            .time_to_live_sec = 60,
+        });
+        std.debug.print("KV insert completed\n", .{});
+
+        var result = try store.lookup("kv_test_key", arena.allocator());
+        const value = try result.body.readAll(arena.allocator(), 0);
+        std.debug.print("KV lookup value: [{s}]\n", .{value});
+        std.debug.assert(std.mem.eql(u8, value, "kv_test_value"));
+        if (result.metadata) |metadata| {
+            std.debug.print("KV lookup metadata: [{s}]\n", .{metadata});
+            std.debug.assert(std.mem.eql(u8, metadata, "kv_test_metadata"));
+        }
+        std.debug.print("KV lookup generation: {}\n", .{result.generation});
+
+        const all = try store.getAll("kv_test_key", arena.allocator(), 0);
+        std.debug.assert(std.mem.eql(u8, all, "kv_test_value"));
+
+        try store.insert("kv_test_key", "!", .{ .mode = .append });
+        const appended = try store.getAll("kv_test_key", arena.allocator(), 0);
+        std.debug.print("KV appended value: [{s}]\n", .{appended});
+        std.debug.assert(std.mem.eql(u8, appended, "kv_test_value!"));
+
+        const listing = try store.list(arena.allocator(), .{ .prefix = "kv_test_" }, 0);
+        std.debug.print("KV list: [{s}]\n", .{listing});
+
+        try store.delete("kv_test_key");
+        if (store.lookup("kv_test_key", arena.allocator())) |_| {
+            std.debug.print("KV delete failed, key still present\n", .{});
+            std.debug.assert(false);
+        } else |err| {
+            std.debug.assert(err == error.NotFound);
+            std.debug.print("KV delete confirmed\n", .{});
+        }
+
+        std.debug.print("KV store test completed\n", .{});
+    }
+
     // Final response to client
     {
         var response = downstream.response;
