@@ -27,7 +27,7 @@ Zigly can be added as a dependency using Zig's package manager. Add it to your `
     .version = "0.0.1",
     .dependencies = .{
         .zigly = .{
-            .url = "https://github.com/username/zigly/archive/main.tar.gz",
+            .url = "https://github.com/jedisct1/zigly/archive/refs/heads/master.tar.gz",
             // Add the hash after first build attempt
         },
     },
@@ -37,7 +37,7 @@ Zigly can be added as a dependency using Zig's package manager. Add it to your `
 Alternatively, clone Zigly into your project or add it as a git submodule:
 
 ```bash
-git submodule add https://github.com/username/zigly.git lib/zigly
+git submodule add https://github.com/jedisct1/zigly.git lib/zigly
 ```
 
 ## Build Configuration
