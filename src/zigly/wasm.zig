@@ -184,8 +184,22 @@ pub const CACHE_OVERRIDE_TAG_PASS: CacheOverrideTag = 0x1;
 pub const CACHE_OVERRIDE_TAG_TTL: CacheOverrideTag = 0x2;
 pub const CACHE_OVERRIDE_TAG_STALE_WHILE_REVALIDATE: CacheOverrideTag = 0x4;
 pub const CACHE_OVERRIDE_TAG_PCI: CacheOverrideTag = 0x8;
+pub const CACHE_OVERRIDE_TAG_LOOKUP_TIMEOUT: CacheOverrideTag = 0x10;
+
+/// An override for response caching behavior.
+/// Fields correspond to cache_override_tag, when set.
+/// Surrogate_keys is untagged; an empty value inidicates no override;
+pub const CacheOverride = extern struct {
+    ttl: u32,
+    stale_while_revalidate: u32,
+    surrogate_keys: WasiMutPtr(Char8),
+    surrogate_keys_len: u32,
+    lookup_timeout_ms: u32,
+};
 
 pub const NumBytes = usize;
+
+pub const NumHops = usize;
 
 pub const HeaderCount = u32;
 
@@ -360,6 +374,22 @@ pub const BACKEND_CONFIG_OPTIONS_GRPC: BackendConfigOptions = 0x4000;
 pub const BACKEND_CONFIG_OPTIONS_KEEPALIVE: BackendConfigOptions = 0x8000;
 pub const BACKEND_CONFIG_OPTIONS_POOLING_LIMITS: BackendConfigOptions = 0x10000;
 pub const BACKEND_CONFIG_OPTIONS_PREFER_IPV_4: BackendConfigOptions = 0x20000;
+pub const BACKEND_CONFIG_OPTIONS_HEALTHCHECK: BackendConfigOptions = 0x40000;
+
+pub const HealthcheckConfig = extern struct {
+    interval_ms: u64,
+    timeout_ms: u64,
+    host: WasiMutPtr(Char8),
+    host_len: u32,
+    method: WasiMutPtr(Char8),
+    method_len: u32,
+    path: WasiMutPtr(Char8),
+    path_len: u32,
+    expected_status: u32,
+    window: u32,
+    threshold: u32,
+    initial: u32,
+};
 
 pub const DynamicBackendConfig = extern struct {
     host_override: WasiMutPtr(Char8),
@@ -388,6 +418,7 @@ pub const DynamicBackendConfig = extern struct {
     max_connections: u32,
     max_use: u32,
     max_lifetime_ms: TimeoutMs,
+    healthcheck: WasiMutPtr(HealthcheckConfig),
 };
 
 /// TLS client certificate verified result from downstream.
@@ -476,6 +507,12 @@ pub const BodyLength = u64;
 pub const VcpuMs = u64;
 
 pub const MemoryMib = u32;
+
+pub const DomainInspectorEnabled = u32;
+
+pub const ImageOptimizerEnabled = u32;
+
+pub const OriginInspectorEnabled = u32;
 
 pub const InspectInfoMask = u32;
 pub const INSPECT_INFO_MASK_RESERVED: InspectInfoMask = 0x1;
@@ -1087,6 +1124,18 @@ pub const FastlyCache = struct {
 pub const FastlyComputeRuntime = struct {
     pub extern "fastly_compute_runtime" fn get_vcpu_ms(
         result_ptr: WasiMutPtr(VcpuMs),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_compute_runtime" fn has_domain_inspector(
+        result_ptr: WasiMutPtr(DomainInspectorEnabled),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_compute_runtime" fn has_image_optimizer(
+        result_ptr: WasiMutPtr(ImageOptimizerEnabled),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_compute_runtime" fn has_origin_inspector(
+        result_ptr: WasiMutPtr(OriginInspectorEnabled),
     ) callconv(.c) FastlyStatus;
 
     /// Get a snapshot of the current dynamic memory usage, rounded up to the nearest mebibyte (2^20).
@@ -2021,6 +2070,14 @@ pub const FastlyHttpDownstream = struct {
         vpn_service_name_max_len: usize,
         nwritten_out: WasiMutPtr(usize),
     ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_visits_this_service(
+        result_ptr: WasiMutPtr(NumHops),
+    ) callconv(.c) FastlyStatus;
+
+    pub extern "fastly_http_downstream" fn downstream_visits_this_pop(
+        result_ptr: WasiMutPtr(NumHops),
+    ) callconv(.c) FastlyStatus;
 };
 
 // ---------------------- Module: [fastly_http_req] ----------------------
@@ -2045,6 +2102,13 @@ pub const FastlyHttpReq = struct {
         stale_while_revalidate: u32,
         sk_ptr: WasiPtr(u8),
         sk_len: usize,
+    ) callconv(.c) FastlyStatus;
+
+    /// As cache_override_set and cache_override_v2_set, but with tags for which fields are present.
+    pub extern "fastly_http_req" fn cache_override_v3_set(
+        h: RequestHandle,
+        tag: CacheOverrideTag,
+        cache_override_ptr: WasiMutPtr(CacheOverride),
     ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_req" fn downstream_client_ip_addr(
@@ -2295,7 +2359,9 @@ pub const FastlyHttpReq = struct {
     /// pending header changes previously queued via other `pending_req_header_insert`
     /// or `pending_req_header_append` calls for the same header name.
     ///
-    /// The `target` argument controls under which conditions this header is applied.
+    /// When using `send_downstream_pending`, the pending header changes will also
+    /// be applied to the synthetic 5XX response generated in the event of a backend
+    /// request error.
     pub extern "fastly_http_req" fn pending_req_header_insert(
         h: PendingRequestHandle,
         name_ptr: WasiPtr(u8),
@@ -2311,7 +2377,9 @@ pub const FastlyHttpReq = struct {
     /// the same header name, but will instead result in multiple headers of the
     /// same name in the final response, each with their own values.
     ///
-    /// The `target` argument controls under which conditions this header is applied.
+    /// When using `send_downstream_pending`, the pending header changes will also
+    /// be applied to the synthetic 5XX response generated in the event of a backend
+    /// request error.
     pub extern "fastly_http_req" fn pending_req_header_append(
         h: PendingRequestHandle,
         name_ptr: WasiPtr(u8),
@@ -2326,7 +2394,9 @@ pub const FastlyHttpReq = struct {
     /// This will also remove any changes previously queued via `pending_req_header_insert`
     /// or `pending_req_header_append` for the same header name.
     ///
-    /// The `target` argument controls under which conditions this header is applied.
+    /// When using `send_downstream_pending`, the pending header changes will also
+    /// be applied to the synthetic 5XX response generated in the event of a backend
+    /// request error.
     pub extern "fastly_http_req" fn pending_req_header_remove(
         h: PendingRequestHandle,
         name_ptr: WasiPtr(u8),
@@ -2562,6 +2632,24 @@ pub const FastlyHttpResp = struct {
     pub extern "fastly_http_resp" fn status_set(
         h: ResponseHandle,
         status: HttpStatus,
+    ) callconv(.c) FastlyStatus;
+
+    /// Gets the response's HTTP reason phrase, as raw bytes.
+    ///
+    /// The reason phrase is the text following the status code on an HTTP/1 status
+    /// line. This returns the reason phrase currently associated with the response,
+    /// which could be received from a backend, retrieved from cache, or created by the
+    /// guest. A phrase may contain `obs-text` (`0x80..=0xFF`) per RFC 9112, so it is
+    /// returned as raw bytes and is not guaranteed to be valid UTF-8. The returned
+    /// bytes are empty when the response has no reason phrase. The phrase is written
+    /// into a buffer of `reason_phrase_max_len` bytes; if it does not fit, the required
+    /// length is written to `nwritten_out` and a `buflen` error is returned so the
+    /// caller can retry with a larger buffer. The result is not NUL-terminated.
+    pub extern "fastly_http_resp" fn reason_phrase_get(
+        h: ResponseHandle,
+        reason_phrase_out: WasiMutPtr(Char8),
+        reason_phrase_max_len: usize,
+        nwritten_out: WasiMutPtr(usize),
     ) callconv(.c) FastlyStatus;
 
     pub extern "fastly_http_resp" fn close(
